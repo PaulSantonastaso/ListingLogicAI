@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Environment variables (CRITICAL for your API Keys)
+.env
+venv/
+env/
+
+# Streamlit specific
+.streamlit/
