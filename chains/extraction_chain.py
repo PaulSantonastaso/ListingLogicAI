@@ -5,7 +5,7 @@ from utils.prompt_loader import load_prompt_text
 
 
 def build_extraction_chain(api_key: str):
-    system_prompt = load_prompt_text("listing_system_prompt.txt")
+    system_prompt = load_prompt_text("extraction.txt")
 
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
