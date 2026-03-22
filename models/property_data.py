@@ -40,3 +40,9 @@ class ListingDescriptionOutput(BaseModel):
 
 class SocialPostOutput(BaseModel):
     social_media_post: str = Field(description="Catchy, emoji-friendly social media post with hashtags")
+
+
+class EmailCampaign(BaseModel):
+    subject: str = Field(description="High-open rate subject line using a 'hook'")
+    body: str = Field(description="Persuasive email body with a clear CTA to book a tour")
+    preview_text: str = Field(description="The 1-sentence snippet seen in the inbox preview")
