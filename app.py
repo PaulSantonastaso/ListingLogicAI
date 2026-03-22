@@ -1,3 +1,4 @@
+import asyncio
 import streamlit as st
 from services.listing_pipeline_service import generate_listing_package_service
 from models.property_data import PropertyDetails
@@ -51,7 +52,11 @@ with tab_text:
             with st.spinner("Analyzing data and writing copy..."):
                 try:
                     # Pass the email_tone to your service
-                    result = generate_listing_package_service(user_notes, api_key, email_tone)
+                    result = asyncio.run(generate_listing_package_service(
+                        user_notes, 
+                        api_key, 
+                        email_tone
+                    ))
                     
                     # Unpack the results from your service dictionary
                     mls_text = result["mls_summary"]
