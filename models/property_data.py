@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 from models.property_image import PropertyImage
+from models.feature_candidate import FeatureCandidate
 
 
 class PropertyDetails(BaseModel):
@@ -38,6 +39,11 @@ class PropertyDetails(BaseModel):
     images: List[PropertyImage] = Field(
         default_factory=list,
         description="Property photos uploaded by the agent. Each image includes an AI-generated description, detected visual features, and metadata such as room type and quality score."
+    )
+
+    feature_candidates: list[FeatureCandidate] = Field(
+        default_factory=list,
+        description="Suggested property features with provenance and confidence, derived from notes, images, or merged system logic."
     )
 
 

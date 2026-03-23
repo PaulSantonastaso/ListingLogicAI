@@ -19,7 +19,7 @@ RoomType = Literal[
 
 ShotType = Literal["wide", "detail", "close_up", "unknown"]
 ConfidenceLevel = Literal["low", "medium", "high"]
-FeatureSource = Literal["image"]
+FeatureSource = Literal["image", "vision"]
 
 
 class ImageFeature(BaseModel):

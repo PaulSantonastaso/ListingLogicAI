@@ -1,16 +1,56 @@
 import asyncio
 import streamlit as st
+import hashlib
 from services.listing_pipeline_service import (
     extract_property_data_service, 
     generate_marketing_assets_service
 )
 from models.property_data import PropertyDetails
+from services.image_analysis_service import analyze_property_images
+from services.fusion_service import merge_image_features_into_property
+
+def build_uploaded_image_fingerprint(uploaded_files) -> str:
+    """
+    Build a stable fingerprint for the currently uploaded files.
+    """
+    hasher = hashlib.sha256()
+
+    for file in uploaded_files:
+        file_bytes = file.getvalue()
+        hasher.update(file.name.encode("utf-8"))
+        hasher.update(file_bytes)
+
+    return hasher.hexdigest()
+
+def extract_room_from_evidence(evidence: str | None) -> str:
+    if not evidence or "(" not in evidence or ")" not in evidence:
+        return "other"
+
+    try:
+        return evidence.split("(")[-1].split(")")[0].strip()
+    except Exception:
+        return "other"
+    
+def group_feature_candidates(candidates):
+    grouped = {}
+
+    for candidate in candidates:
+        room = extract_room_from_evidence(candidate.evidence)
+        grouped.setdefault(room, []).append(candidate)
+
+    return grouped
 
 if "extracted_details" not in st.session_state:
     st.session_state.extracted_details = None
 
 if "marketing_results" not in st.session_state:
     st.session_state.marketing_results = None
+
+if "analyzed_images" not in st.session_state:
+    st.session_state.analyzed_images = None
+
+if "uploaded_image_fingerprint" not in st.session_state:
+    st.session_state.uploaded_image_fingerprint = None
 
 st.set_page_config(
     page_title="ListingLogicAI",
@@ -45,6 +85,13 @@ if not api_key:
 tab_text, tab_photo = st.tabs(["📝 Listing Generator", "📸 Photo Enhancer"])
 
 with tab_text:
+    uploaded_images = st.file_uploader(
+        "Upload Property Photos",
+        type=["jpg", "jpeg", "png"],
+        accept_multiple_files=True,
+        help="Upload photos you took at the property to enhance the marketing content."
+    )
+
     user_notes = st.text_area(
         "Agent Notes",
         placeholder="Enter property details, upgrades, and neighborhood info here...",
@@ -55,13 +102,38 @@ with tab_text:
         if not user_notes.strip():
             st.warning("Please enter agent notes.")
         else:
-            with st.spinner("AI is extracting facts..."):
+            with st.spinner("AI is extracting facts and analyzing photos..."):
                 try:
-                    # Run just the extraction chain
                     details = asyncio.run(extract_property_data_service(user_notes, api_key))
-                    st.session_state.extracted_details = details
-                    # Clear old results when starting a new extraction
-                    st.session_state.marketing_results = None 
+
+                    if uploaded_images:
+                        current_fingerprint = build_uploaded_image_fingerprint(uploaded_images)
+
+                        if (
+                            st.session_state.analyzed_images is None
+                            or st.session_state.uploaded_image_fingerprint != current_fingerprint
+                        ):
+                            images = []
+
+                            for file in uploaded_images:
+                                image_bytes = file.getvalue()
+                                images.append((image_bytes, file.name))
+
+                            analyzed_images = asyncio.run(
+                                analyze_property_images(images, api_key)
+                            )
+
+                            st.session_state.analyzed_images = analyzed_images
+                            st.session_state.uploaded_image_fingerprint = current_fingerprint
+
+                        details = merge_image_features_into_property(
+                            details,
+                            st.session_state.analyzed_images
+                        )
+                    else:
+                        st.session_state.analyzed_images = None
+                        st.session_state.uploaded_image_fingerprint = None
+
                 except Exception as e:
                     st.error(f"Extraction Error: {e}")
 
@@ -84,13 +156,58 @@ with tab_text:
             value=", ".join(st.session_state.extracted_details.key_features)
         )
 
+        details = st.session_state.extracted_details
+
+        if details.feature_candidates:
+            st.subheader("🔍 Image-Detected Features")
+
+            selected_features = []
+            grouped_candidates = group_feature_candidates(details.feature_candidates)
+
+            for room, candidates in grouped_candidates.items():
+                room_label = room.replace("_", " ").title()
+                st.markdown(f"**{room_label}**")
+
+                for candidate in candidates:
+                    default_checked = candidate.confidence >= 0.85
+
+                    checked = st.checkbox(
+                        f"{candidate.name} (confidence {candidate.confidence:.2f})",
+                        value=default_checked,
+                        help=candidate.evidence,
+                        key=f"feature_{room}_{candidate.name}"
+                    )
+
+                    if checked:
+                        selected_features.append(candidate.name)
+
+            base_features = [f.strip() for f in edit_features.split(",") if f.strip()]
+            edit_features = list(dict.fromkeys(base_features + selected_features))
+
+        if details.images:
+            st.subheader("📷 Uploaded Photos")
+
+            cols = st.columns(3)
+
+            for i, img in enumerate(details.images):
+                with cols[i % 3]:
+                    st.caption(img.metadata.room_type)
+                    st.write(img.description)
+
         if st.button("Step 2: Generate Marketing Suite", type="primary"):
             # Manually sync the widget values back to the session state object
             st.session_state.extracted_details.address = edit_address
             st.session_state.extracted_details.list_price = int(edit_price or 0)
             st.session_state.extracted_details.bedrooms = int(edit_beds or 0)
             st.session_state.extracted_details.bathrooms = float(edit_baths or 0.0)
-            st.session_state.extracted_details.key_features = [f.strip() for f in edit_features.split(",") if f.strip()]
+            if isinstance(edit_features, list):
+                st.session_state.extracted_details.key_features = [
+                    f.strip() for f in edit_features if f.strip()
+                ]
+            else:
+                st.session_state.extracted_details.key_features = [
+                    f.strip() for f in edit_features.split(",") if f.strip()
+                ]
 
             with st.spinner("Generating marketing assets from your edits..."):
                 try:
@@ -147,6 +264,3 @@ with tab_text:
                 st.write(f"**Features:** {', '.join(features)}")
             else:
                 st.write("No data extracted yet.")
-
-with tab_photo:
-    st.info("Photo enhancement is currently in development.")
