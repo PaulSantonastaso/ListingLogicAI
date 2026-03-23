@@ -37,6 +37,12 @@ def group_feature_candidates(candidates):
     for candidate in candidates:
         room = extract_room_from_evidence(candidate.evidence)
         grouped.setdefault(room, []).append(candidate)
+    
+    for room in grouped:
+        grouped[room].sort(
+            key=lambda x: x.confidence,
+            reverse=True
+        )
 
     return grouped
 
@@ -169,7 +175,7 @@ with tab_text:
                 st.markdown(f"**{room_label}**")
 
                 for candidate in candidates:
-                    default_checked = candidate.confidence >= 0.85
+                    default_checked = candidate.confidence >= 0.90
 
                     checked = st.checkbox(
                         f"{candidate.name} (confidence {candidate.confidence:.2f})",
