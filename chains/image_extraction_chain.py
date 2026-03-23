@@ -45,6 +45,21 @@ Rules:
    - garage
 13. Do not include small movable objects or minor appliances unless they are clearly important to the space.
 14. Avoid overly specific low-value details such as stools, microwave color, decor items, or small accessories.
+
+Before selecting visible_features:
+1. First identify the primary room or property area shown.
+2. Then select only features that are materially useful in real estate marketing for that type of space.
+3. Prioritize architectural features, finishes, fixtures, layout elements, and outdoor amenities.
+4. Exclude minor movable objects, decor, and low-value appliance details unless they are central to the space.
+5. Return only the 3 to 6 most marketing-relevant features for the identified room or area.
+
+Examples:
+For kitchens, prioritize items like island, cabinetry style, countertops, stainless appliances, pantry, breakfast bar, and layout.
+For bathrooms, prioritize dual vanities, walk-in shower, soaking tub, updated finishes, and tilework.
+For living areas, prioritize open layout, large windows, natural light, fireplace, built-ins, and ceiling height.
+For exteriors, prioritize curb appeal, covered patio, pool, fenced yard, garage, water view, and outdoor living space.
+
+Do not return overlapping features that describe the same thing. Prefer the single most useful phrase.
 """
 
 

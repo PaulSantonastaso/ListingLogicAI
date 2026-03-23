@@ -47,6 +47,10 @@ def group_feature_candidates(candidates):
 
     return grouped
 
+def build_image_lookup(images):
+    if not images:
+        return {}
+    return {filename: image_bytes for image_bytes, filename in images}
 
 if "extracted_details" not in st.session_state:
     st.session_state.extracted_details = None
@@ -59,6 +63,9 @@ if "analyzed_images" not in st.session_state:
 
 if "uploaded_image_fingerprint" not in st.session_state:
     st.session_state.uploaded_image_fingerprint = None
+
+if "original_images" not in st.session_state:
+    st.session_state.original_images = None
 
 if "enhanced_images" not in st.session_state:
     st.session_state.enhanced_images = None
@@ -115,52 +122,42 @@ with tab_text:
         else:
             with st.spinner("AI is extracting facts and analyzing photos..."):
                 try:
-                    st.write("Step 1A: extracting text details...")
                     details = asyncio.run(extract_property_data_service(user_notes, api_key))
-                    st.write("✅ text extraction done")
 
                     if uploaded_images:
-                        st.write("Step 1B: building upload fingerprint...")
                         current_fingerprint = build_uploaded_image_fingerprint(uploaded_images)
-                        st.write("✅ fingerprint done")
 
                         if (
                             st.session_state.analyzed_images is None
                             or st.session_state.uploaded_image_fingerprint != current_fingerprint
                         ):
-                            st.write("Step 1C: reading uploaded images...")
+
                             images = []
 
                             for file in uploaded_images:
                                 image_bytes = file.getvalue()
                                 images.append((image_bytes, file.name))
 
-                            st.write(f"✅ loaded {len(images)} images")
-
-                            st.write("Step 1D: enhancing images...")
+                            st.session_state.original_images = images
                             enhanced_images = enhance_listing_photos(images)
                             st.session_state.enhanced_images = enhanced_images
-                            st.write("✅ image enhancement done")
+                            # debugging line to check the number of enhanced images
+                            st.caption(f"Enhanced {len(enhanced_images)} images")
 
-                            st.write("Step 1E: analyzing images with Gemini...")
                             analyzed_images = asyncio.run(
                                 analyze_property_images(enhanced_images, api_key)
                             )
                             st.session_state.analyzed_images = analyzed_images
                             st.session_state.uploaded_image_fingerprint = current_fingerprint
-                            st.write("✅ image analysis done")
 
                         if st.session_state.analyzed_images:
-                            st.write("Step 1F: fusing image features...")
                             details = merge_image_features_into_property(
                                 details,
                                 st.session_state.analyzed_images
                             )
-                            st.write("✅ fusion done")
 
                     st.session_state.extracted_details = details
                     st.session_state.marketing_results = None
-                    st.success("Step 1 complete")
 
                 except Exception as e:
                     st.error(f"Extraction Error: {e}")
@@ -203,7 +200,7 @@ with tab_text:
                         f"{candidate.name} (confidence {candidate.confidence:.2f})",
                         value=default_checked,
                         help=candidate.evidence,
-                        key=f"feature_{room}_{candidate.name}"
+                        key=f"feature_{room}_{candidate.name}_{id(candidate)}"
                     )
 
                     if checked:
@@ -215,12 +212,35 @@ with tab_text:
         if details.images:
             st.subheader("📷 Uploaded Photos")
 
-            cols = st.columns(3)
+            original_lookup = build_image_lookup(st.session_state.original_images or [])
+            enhanced_lookup = build_image_lookup(st.session_state.enhanced_images or [])
 
-            for i, img in enumerate(details.images):
-                with cols[i % 3]:
-                    st.caption(img.metadata.room_type)
-                    st.write(img.description)
+            for img in details.images:
+                st.markdown(f"### {img.filename}")
+                st.divider()
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.caption("Original")
+                    original_bytes = original_lookup.get(img.filename)
+                    if original_bytes:
+                        st.image(original_bytes, use_container_width=True)
+
+                with col2:
+                    st.caption("Enhanced")
+                    enhanced_bytes = enhanced_lookup.get(img.filename)
+                    if enhanced_bytes:
+                        st.image(enhanced_bytes, use_container_width=True)
+
+                st.caption(img.metadata.room_type.replace("_", " ").title())
+                st.write(img.description)
+
+                if img.visible_features:
+                    feature_text = ", ".join([f.name for f in img.visible_features])
+                    st.write(f"**Detected features:** {feature_text}")
+
+                st.divider()
 
         if st.button("Step 2: Generate Marketing Suite", type="primary"):
             # Manually sync the widget values back to the session state object
