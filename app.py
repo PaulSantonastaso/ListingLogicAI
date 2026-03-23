@@ -8,6 +8,7 @@ from services.listing_pipeline_service import (
 from models.property_data import PropertyDetails
 from services.image_analysis_service import analyze_property_images
 from services.fusion_service import merge_image_features_into_property
+from services.image_enhancement_service import enhance_listing_photos
 
 def build_uploaded_image_fingerprint(uploaded_files) -> str:
     """
@@ -46,6 +47,7 @@ def group_feature_candidates(candidates):
 
     return grouped
 
+
 if "extracted_details" not in st.session_state:
     st.session_state.extracted_details = None
 
@@ -57,6 +59,9 @@ if "analyzed_images" not in st.session_state:
 
 if "uploaded_image_fingerprint" not in st.session_state:
     st.session_state.uploaded_image_fingerprint = None
+
+if "enhanced_images" not in st.session_state:
+    st.session_state.enhanced_images = None
 
 st.set_page_config(
     page_title="ListingLogicAI",
@@ -110,35 +115,52 @@ with tab_text:
         else:
             with st.spinner("AI is extracting facts and analyzing photos..."):
                 try:
+                    st.write("Step 1A: extracting text details...")
                     details = asyncio.run(extract_property_data_service(user_notes, api_key))
+                    st.write("✅ text extraction done")
 
                     if uploaded_images:
+                        st.write("Step 1B: building upload fingerprint...")
                         current_fingerprint = build_uploaded_image_fingerprint(uploaded_images)
+                        st.write("✅ fingerprint done")
 
                         if (
                             st.session_state.analyzed_images is None
                             or st.session_state.uploaded_image_fingerprint != current_fingerprint
                         ):
+                            st.write("Step 1C: reading uploaded images...")
                             images = []
 
                             for file in uploaded_images:
                                 image_bytes = file.getvalue()
                                 images.append((image_bytes, file.name))
 
-                            analyzed_images = asyncio.run(
-                                analyze_property_images(images, api_key)
-                            )
+                            st.write(f"✅ loaded {len(images)} images")
 
+                            st.write("Step 1D: enhancing images...")
+                            enhanced_images = enhance_listing_photos(images)
+                            st.session_state.enhanced_images = enhanced_images
+                            st.write("✅ image enhancement done")
+
+                            st.write("Step 1E: analyzing images with Gemini...")
+                            analyzed_images = asyncio.run(
+                                analyze_property_images(enhanced_images, api_key)
+                            )
                             st.session_state.analyzed_images = analyzed_images
                             st.session_state.uploaded_image_fingerprint = current_fingerprint
+                            st.write("✅ image analysis done")
 
-                        details = merge_image_features_into_property(
-                            details,
-                            st.session_state.analyzed_images
-                        )
-                    else:
-                        st.session_state.analyzed_images = None
-                        st.session_state.uploaded_image_fingerprint = None
+                        if st.session_state.analyzed_images:
+                            st.write("Step 1F: fusing image features...")
+                            details = merge_image_features_into_property(
+                                details,
+                                st.session_state.analyzed_images
+                            )
+                            st.write("✅ fusion done")
+
+                    st.session_state.extracted_details = details
+                    st.session_state.marketing_results = None
+                    st.success("Step 1 complete")
 
                 except Exception as e:
                     st.error(f"Extraction Error: {e}")
