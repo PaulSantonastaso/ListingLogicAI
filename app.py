@@ -120,7 +120,7 @@ with tab_text:
         if not user_notes.strip():
             st.warning("Please enter agent notes.")
         else:
-            with st.spinner("AI is extracting facts and analyzing photos..."):
+            with st.spinner("AI is extracting data and analyzing photos..."):
                 try:
                     details = asyncio.run(extract_property_data_service(user_notes, api_key))
 
