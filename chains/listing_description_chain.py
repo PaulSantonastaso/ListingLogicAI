@@ -17,7 +17,11 @@ def build_listing_description_chain(api_key: str):
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
-        ("user", "Generate an MLS description using this property data:\n\n{property_details}")
+        ("user", (
+            "Generate an MLS description using the following inputs.\n\n"
+            "Property Details:\n{property_details}\n\n"
+            "Visual Summary:\n{visual_summary}"
+        ))
     ])
 
     return prompt | structured_llm

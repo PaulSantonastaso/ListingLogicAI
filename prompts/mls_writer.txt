@@ -5,3 +5,12 @@ WRITING RULES:
 - Do not introduce upgrades or features not found in the data.
 - If the data is ambiguous, prefer omission over inference.
 - Focus on flow and high-end vocabulary without using "real estate cliches."
+
+Visual signals from marketing-worthy listing photos:
+{visual_summary}
+
+Use these visual signals to enrich the listing description with accurate details about rooms, finishes, layout, and outdoor features visible in the photos.
+
+Prefer highlighting the most important 3 to 5 features rather than listing every room or detail.
+
+Only mention features supported by the structured property details or the visual summary. Do not invent additional features.
