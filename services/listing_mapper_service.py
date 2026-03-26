@@ -98,6 +98,7 @@ def map_property_to_listing_details(
             hoa=property_details.hoa,
             hoa_fee=property_details.hoa_fee,
             hoa_fee_frequency=property_details.hoa_fee_frequency,
+            community_features=_dedupe(property_details.community_features),
         ),
         remarks=RemarksDetails(
             public_remarks=public_remarks,
