@@ -1,10 +1,11 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
+from models.compliance import ComplianceStatus
 
 
 class FairHousingComplianceOutput(BaseModel):
-    status: str = Field(description="One of: pass, revised, flagged")
+    status: ComplianceStatus
     issues_found: list[str] = Field(
         default_factory=list,
         description="List of potential compliance or advertising issues found in the copy."
