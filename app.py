@@ -9,6 +9,7 @@ from models.property_data import PropertyDetails
 from services.image_analysis_service import analyze_property_images
 from services.fusion_service import merge_image_features_into_property
 from services.image_enhancement_service import enhance_listing_photos
+from services.property_normalization_service import normalize_property_details
 
 def build_uploaded_image_fingerprint(uploaded_files) -> str:
     """
@@ -155,6 +156,8 @@ with tab_text:
                                 details,
                                 st.session_state.analyzed_images
                             )
+
+                    details = normalize_property_details(details)
 
                     st.session_state.extracted_details = details
                     st.session_state.marketing_results = None
