@@ -18,9 +18,10 @@ def build_social_post_chain(api_key: str):
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
         ("user", (
-            "Generate a social media post using the following property data and MLS description.\n\n"
+            "Generate a social media post using the following inputs.\n\n"
             "Property Details:\n{property_details}\n\n"
-            "MLS Description:\n{mls_summary}"
+            "MLS Description:\n{mls_summary}\n\n"
+            "Visual Summary:\n{visual_summary}"
         ))
     ])
 

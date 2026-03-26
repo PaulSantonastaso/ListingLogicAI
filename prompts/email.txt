@@ -10,4 +10,15 @@ STRATEGY:
 - CALL TO ACTION (CTA): Be singular and clear. Ask them to "Reply to this email" or "Text me to schedule a tour."
 
 TONE: Personal, professional, and exclusive. 
-DATA SOURCE: Use the provided MLS description as your only source of truth.
+DATA SOURCES:
+- MLS description:
+{mls_summary}
+
+- Visual signals from marketing-worthy listing photos:
+{visual_summary}
+
+Use the visual signals to make the email feel specific and grounded by referencing the most compelling spaces and features visible in the photos.
+
+Prefer highlighting the most important 3 to 5 visual and property highlights rather than listing every detail.
+
+Only mention features supported by the MLS description or visual summary. Do not invent additional features.
