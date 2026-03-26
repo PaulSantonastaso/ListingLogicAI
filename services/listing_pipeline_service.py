@@ -6,6 +6,7 @@ from chains.social_post_chain import build_social_post_chain
 from chains.email_chain import build_email_chain
 from models.property_data import EmailCampaign, PropertyDetails, ListingDescriptionOutput, SocialPostOutput
 from services.visual_summary_service import build_visual_summary
+from services.compliance_service import ComplianceService
 
 
 async def extract_property_data_service(raw_notes: str, api_key: str) -> PropertyDetails:
@@ -20,6 +21,7 @@ async def generate_marketing_assets_service(details: PropertyDetails, api_key: s
     listing_chain = build_listing_description_chain(api_key)
     social_chain = build_social_post_chain(api_key)
     email_chain = build_email_chain(api_key)
+    compliance_service = ComplianceService(api_key)
 
     property_details_json = details.model_dump_json(indent=2)
     visual_summary = build_visual_summary(details)
@@ -44,8 +46,24 @@ async def generate_marketing_assets_service(details: PropertyDetails, api_key: s
 
     social_res, email_res = await asyncio.gather(social_task, email_task)
 
-    return {
+    social_output = cast(SocialPostOutput, social_res)
+    email_output = cast(EmailCampaign, email_res)
+
+    compliance_results = await compliance_service.review_assets({
         "mls_summary": listing_output.mls_summary,
-        "social_media_post": cast(SocialPostOutput, social_res).social_media_post,
-        "email_campaign": cast(EmailCampaign, email_res)
+        "social_media_post": social_output.social_media_post,
+        "email_subject": email_output.subject,
+        "email_body": email_output.body,
+        "email_preview_text": email_output.preview_text,
+    })
+
+    return {
+        "mls_summary": compliance_results["mls_summary"].compliant_text,
+        "social_media_post": compliance_results["social_media_post"].compliant_text,
+        "email_campaign": EmailCampaign(
+            subject=compliance_results["email_subject"].compliant_text,
+            body=compliance_results["email_body"].compliant_text,
+            preview_text=compliance_results["email_preview_text"].compliant_text,
+        ),
+        "compliance_results": list(compliance_results.values()),
     }
