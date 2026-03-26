@@ -103,7 +103,7 @@ class PropertyDetails(BaseModel):
 
     pool_features: list[str] = Field(
         default_factory=list,
-        description="Pool related features such as in-ground pool, heated pool, screened enclosure"
+        description="Private on-property pool features such as in-ground pool, heated pool, spa, or screened enclosure. Do not include community pool amenities."
     )
 
     hoa: Optional[bool] = Field(
@@ -119,6 +119,11 @@ class PropertyDetails(BaseModel):
     hoa_fee_frequency: Optional[str] = Field(
         default=None,
         description="Frequency of HOA fee such as Monthly, Quarterly, or Annually"
+    )
+
+    community_features: list[str] = Field(
+        default_factory=list,
+        description="Community or association amenities such as clubhouse, community pool, playground, fitness center, or gated entry. Do not include private property features."
     )
 
     key_features: List[str] = Field(
