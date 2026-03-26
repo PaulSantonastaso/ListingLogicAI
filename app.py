@@ -277,6 +277,14 @@ with tab_text:
         st.success("Campaign Generated Successfully!")
         st.divider()
 
+        if "reso_csv" in res:
+            st.download_button(
+                label="⬇ Download MLS CSV",
+                data=res["reso_csv"],
+                file_name="listing_import.csv",
+                mime="text/csv",
+            )
+
         if "compliance_results" in res:
             with st.expander("⚖️ Compliance Review"):
                 for review in res["compliance_results"]:
@@ -331,5 +339,6 @@ with tab_text:
                 # Ensure key_features is a list before joining
                 features = data.key_features or []
                 st.write(f"**Features:** {', '.join(features)}")
+                st.text(res["reso_csv"])
             else:
                 st.write("No data extracted yet.")

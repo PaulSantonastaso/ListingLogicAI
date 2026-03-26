@@ -4,9 +4,12 @@ from chains.extraction_chain import build_extraction_chain
 from chains.listing_description_chain import build_listing_description_chain
 from chains.social_post_chain import build_social_post_chain
 from chains.email_chain import build_email_chain
+from models import listing_details
 from models.property_data import EmailCampaign, PropertyDetails, ListingDescriptionOutput, SocialPostOutput
 from services.visual_summary_service import build_visual_summary
 from services.compliance_service import ComplianceService
+from services.listing_mapper_service import map_property_to_listing_details
+from services.reso_csv_service import build_reso_csv_string
 
 
 async def extract_property_data_service(raw_notes: str, api_key: str) -> PropertyDetails:
@@ -46,6 +49,13 @@ async def generate_marketing_assets_service(details: PropertyDetails, api_key: s
 
     social_res, email_res = await asyncio.gather(social_task, email_task)
 
+    listing_details = map_property_to_listing_details(
+        details,
+        public_remarks=listing_output.mls_summary,
+    )
+
+    reso_csv = build_reso_csv_string(listing_details)
+
     social_output = cast(SocialPostOutput, social_res)
     email_output = cast(EmailCampaign, email_res)
 
@@ -57,6 +67,15 @@ async def generate_marketing_assets_service(details: PropertyDetails, api_key: s
         "email_preview_text": email_output.preview_text,
     })
 
+    final_mls_summary = compliance_results["mls_summary"].compliant_text
+
+    listing_details = map_property_to_listing_details(
+        details,
+        public_remarks=final_mls_summary,
+    )
+
+    reso_csv = build_reso_csv_string(listing_details)
+
     return {
         "mls_summary": compliance_results["mls_summary"].compliant_text,
         "social_media_post": compliance_results["social_media_post"].compliant_text,
@@ -66,4 +85,6 @@ async def generate_marketing_assets_service(details: PropertyDetails, api_key: s
             preview_text=compliance_results["email_preview_text"].compliant_text,
         ),
         "compliance_results": list(compliance_results.values()),
+        "listing_details": listing_details,
+        "reso_csv": reso_csv,
     }

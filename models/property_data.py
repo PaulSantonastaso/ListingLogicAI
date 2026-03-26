@@ -11,6 +11,41 @@ class PropertyDetails(BaseModel):
         description="Full property address or community name"
     )
 
+    city: Optional[str] = Field(
+        default=None,
+        description="City where the property is located"
+    )
+
+    state: Optional[str] = Field(
+        default=None,
+        description="State or region of the property"
+    )
+
+    postal_code: Optional[str] = Field(
+        default=None,
+        description="Postal or ZIP code of the property"
+    )
+
+    property_type: Optional[str] = Field(
+        default=None,
+        description="High level property type such as Residential, Condo, Townhouse, Land, or Multi-Family"
+    )
+
+    property_subtype: Optional[str] = Field(
+        default=None,
+        description="More specific property type such as Single Family Residence, Townhome, Condo, Duplex"
+    )
+
+    stories_total: Optional[int] = Field(
+        default=None,
+        description="Total number of stories or floors in the property"
+    )
+
+    year_built: Optional[int] = Field(
+        default=None,
+        description="Year the property was originally built"
+    )
+
     bedrooms: Optional[int] = Field(
         default=None,
         description="Number of bedrooms as an integer"
@@ -18,7 +53,12 @@ class PropertyDetails(BaseModel):
 
     bathrooms: Optional[float] = Field(
         default=None,
-        description="Number of bathrooms as a decimal if needed (e.g., 2.5)"
+        description="Number of full bathrooms in the property (not including half bathrooms)"
+    )
+
+    half_bathrooms: Optional[float] = Field(
+        default=None,
+        description="Number of half bathrooms in the property (toilet and sink only)"
     )
 
     list_price: Optional[int] = Field(
@@ -29,6 +69,61 @@ class PropertyDetails(BaseModel):
     square_footage: Optional[int] = Field(
         default=None,
         description="Square footage of the property in square feet"
+    )
+
+    lot_size_sqft: Optional[int] = Field(
+        default=None,
+        description="Total lot size in square feet"
+    )
+
+    garage_spaces: Optional[int] = Field(
+        default=None,
+        description="Number of garage parking spaces"
+    )
+
+    parking_features: list[str] = Field(
+        default_factory=list,
+        description="Parking features such as driveway, attached garage, carport, or street parking"
+    )
+
+    interior_features: list[str] = Field(
+        default_factory=list,
+        description="Interior property features such as vaulted ceilings, open floor plan, or fireplace"
+    )
+
+    exterior_features: list[str] = Field(
+        default_factory=list,
+        description="Exterior features such as patio, deck, fenced yard, or covered porch"
+    )
+
+    appliances: list[str] = Field(
+        default_factory=list,
+        description="Appliances included in the property such as dishwasher, refrigerator, microwave, or range"
+    )
+
+    pool_features: list[str] = Field(
+        default_factory=list,
+        description="Private on-property pool features such as in-ground pool, heated pool, spa, or screened enclosure. Do not include community pool amenities."
+    )
+
+    hoa: Optional[bool] = Field(
+        default=None,
+        description="Whether the property is part of a Homeowners Association"
+    )
+
+    hoa_fee: Optional[float] = Field(
+        default=None,
+        description="Recurring HOA fee amount"
+    )
+
+    hoa_fee_frequency: Optional[str] = Field(
+        default=None,
+        description="Frequency of HOA fee such as Monthly, Quarterly, or Annually"
+    )
+
+    community_features: list[str] = Field(
+        default_factory=list,
+        description="Community or association amenities such as clubhouse, community pool, playground, fitness center, or gated entry. Do not include private property features."
     )
 
     key_features: List[str] = Field(
