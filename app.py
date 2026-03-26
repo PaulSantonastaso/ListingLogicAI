@@ -157,7 +157,7 @@ with tab_text:
                                 st.session_state.analyzed_images
                             )
 
-                        details = normalize_property_details(details)
+                    details = normalize_property_details(details)
 
                     st.session_state.extracted_details = details
                     st.session_state.marketing_results = None
