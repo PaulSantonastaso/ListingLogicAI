@@ -277,6 +277,27 @@ with tab_text:
         st.success("Campaign Generated Successfully!")
         st.divider()
 
+        if "compliance_results" in res:
+            with st.expander("⚖️ Compliance Review"):
+                for review in res["compliance_results"]:
+                    status_icon = {
+                        "pass": "✅",
+                        "revised": "✏️",
+                        "flagged": "⚠️"
+                    }.get(review.status, "ℹ️")
+
+                    st.markdown(f"**{status_icon} {review.asset_type.replace('_',' ').title()}**")
+
+                    if review.issues_found:
+                        st.write("Issues detected:")
+                        for issue in review.issues_found:
+                            st.write(f"- {issue}")
+
+                    if review.reviewer_notes:
+                        st.caption(review.reviewer_notes)
+
+                    st.divider()
+
         col_mls, col_soc = st.columns(2)
         with col_mls:
             st.subheader("📋 MLS Description")
