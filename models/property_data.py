@@ -157,7 +157,48 @@ class ListingDescriptionOutput(BaseModel):
 
 
 class SocialPostOutput(BaseModel):
-    social_media_post: str = Field(description="Catchy, emoji-friendly social media post with hashtags")
+    platform: Optional[str] = Field(
+        default=None,
+        description="Target social platform such as Facebook or Instagram"
+    )
+    slot_name: Optional[str] = Field(
+        default=None,
+        description="Planned slot name such as facebook_feed, instagram_post_1, or instagram_post_2"
+    )
+    image_id: Optional[str] = Field(
+        default=None,
+        description="ID of the selected image tied to this post"
+    )
+    image_filename: Optional[str] = Field(
+        default=None,
+        description="Filename of the selected image tied to this post"
+    )
+    recommended_aspect_ratio: Optional[str] = Field(
+        default=None,
+        description="Recommended aspect ratio for the image on this platform, such as 4:5 or 1.91:1"
+    )
+    crop_guidance: Optional[str] = Field(
+        default=None,
+        description="Brief guidance on how the image should be cropped or framed for this platform"
+    )
+    room_type: Optional[str] = Field(
+        default=None,
+        description="Primary room or scene shown in the selected image"
+    )
+    visible_features: List[str] = Field(
+        default_factory=list,
+        description="Key visible features supported by the selected image"
+    )
+    social_media_post: str = Field(
+        description="Platform-specific social media caption tied to the selected image"
+    )
+
+
+class SocialMediaSuiteOutput(BaseModel):
+    posts: List[SocialPostOutput] = Field(
+        default_factory=list,
+        description="Collection of platform-specific social posts, each tied to a selected image"
+    )
 
 
 class EmailCampaign(BaseModel):
