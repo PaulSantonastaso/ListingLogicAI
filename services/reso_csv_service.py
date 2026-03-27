@@ -15,6 +15,9 @@ def build_reso_csv_row(listing: ListingDetails) -> dict[str, str | int | float |
         "StateOrProvince": listing.address.state,
         "PostalCode": listing.address.postal_code,
 
+        "CommunityName": listing.address.community_name,
+        "SubdivisionName": listing.address.subdivision_name,
+
         "ListPrice": listing.pricing.list_price,
 
         "PropertyType": listing.basics.property_type,
