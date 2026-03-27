@@ -278,7 +278,7 @@ with tab_text:
             st.subheader("🧠 AI Image Insights")
 
             if intelligence.highlight_images:
-                st.markdown("**Top Marketing Images**")
+                st.markdown("**Selected for Social**")
 
                 for idx, image_id in enumerate(intelligence.highlight_images, start=1):
 
