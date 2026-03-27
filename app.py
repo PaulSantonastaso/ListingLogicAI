@@ -171,13 +171,51 @@ with tab_text:
         st.subheader("🛠 Verify & Edit Property Details")
         st.caption("Confirm these details are correct before generating marketing copy.")
 
-        col1, col2 = st.columns(2)
+        details = st.session_state.extracted_details
+
+        col1, col2, col3 = st.columns(3)
+
         with col1:
-            edit_address = st.text_input("Address", value=st.session_state.extracted_details.address)
-            edit_price = st.number_input("List Price", value=int(st.session_state.extracted_details.list_price or 0))
+            edit_address = st.text_input(
+                "Street Address",
+                value=details.address or ""
+            )
+            edit_city = st.text_input(
+                "City",
+                value=details.city or ""
+            )
+            edit_state = st.text_input(
+                "State",
+                value=details.state or ""
+            )
+            edit_postal_code = st.text_input(
+                "Postal Code",
+                value=details.postal_code or ""
+            )
+
         with col2:
-            edit_beds = st.number_input("Beds", value=st.session_state.extracted_details.bedrooms)
-            edit_baths = st.number_input("Baths", value=float(st.session_state.extracted_details.bathrooms or 0))
+            edit_community_name = st.text_input(
+                "Community Name",
+                value=details.community_name or ""
+            )
+            edit_subdivision_name = st.text_input(
+                "Subdivision Name",
+                value=details.subdivision_name or ""
+            )
+            edit_price = st.number_input(
+                "List Price",
+                value=int(details.list_price or 0)
+            )
+
+        with col3:
+            edit_beds = st.number_input(
+                "Beds",
+                value=int(details.bedrooms or 0)
+            )
+            edit_baths = st.number_input(
+                "Baths",
+                value=float(details.bathrooms or 0)
+            )
         
         edit_features = st.text_area(
             "Key Features (comma separated)", 
@@ -247,7 +285,13 @@ with tab_text:
 
         if st.button("Step 2: Generate Marketing Suite", type="primary"):
             # Manually sync the widget values back to the session state object
-            st.session_state.extracted_details.address = edit_address
+            st.session_state.extracted_details.address = edit_address.strip() or None
+            st.session_state.extracted_details.city = edit_city.strip() or None
+            st.session_state.extracted_details.state = edit_state.strip() or None
+            st.session_state.extracted_details.postal_code = edit_postal_code.strip() or None
+            st.session_state.extracted_details.community_name = edit_community_name.strip() or None
+            st.session_state.extracted_details.subdivision_name = edit_subdivision_name.strip() or None
+
             st.session_state.extracted_details.list_price = int(edit_price or 0)
             st.session_state.extracted_details.bedrooms = int(edit_beds or 0)
             st.session_state.extracted_details.bathrooms = float(edit_baths or 0.0)
@@ -333,13 +377,16 @@ with tab_text:
             # Always check if the object exists before accessing attributes
             if st.session_state.extracted_details:
                 data = st.session_state.extracted_details
-                st.write(f"**Address:** {data.address}")
-                
-                # Use a safe getter for price to avoid formatting NoneType
+                st.write(f"**Street Address:** {data.address or 'N/A'}")
+                st.write(f"**City:** {data.city or 'N/A'}")
+                st.write(f"**State:** {data.state or 'N/A'}")
+                st.write(f"**Postal Code:** {data.postal_code or 'N/A'}")
+                st.write(f"**Community Name:** {data.community_name or 'N/A'}")
+                st.write(f"**Subdivision Name:** {data.subdivision_name or 'N/A'}")
+
                 price_val = data.list_price
-                st.write(f"**Price:** ${price_val:,}" if price_val else "Price: N/A")
-                
-                # Ensure key_features is a list before joining
+                st.write(f"**Price:** ${price_val:,}" if price_val else "**Price:** N/A")
+
                 features = data.key_features or []
                 st.write(f"**Features:** {', '.join(features)}")
                 st.text(res["reso_csv"])

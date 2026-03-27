@@ -19,6 +19,14 @@ class AddressDetails(BaseModel):
         default=None,
         description="Postal or ZIP code of the property"
     )
+    community_name: Optional[str] = Field(
+        default=None,
+        description="Neighborhood or master-planned community name such as Lake Nona"
+    )
+    subdivision_name: Optional[str] = Field(
+        default=None,
+        description="Subdivision, development section, or condo/building name such as Laureate Park"
+    )
 
 
 class PricingDetails(BaseModel):
