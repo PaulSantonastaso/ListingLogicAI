@@ -129,6 +129,13 @@ with tab_text:
                 try:
                     details = asyncio.run(extract_property_data_service(user_notes, api_key))
 
+                    if not uploaded_images:
+                        st.session_state.analyzed_images = None
+                        st.session_state.original_images = None
+                        st.session_state.enhanced_images = None
+                        st.session_state.uploaded_image_fingerprint = None
+                        st.session_state.image_intelligence = None
+
                     if uploaded_images:
                         current_fingerprint = build_uploaded_image_fingerprint(uploaded_images)
 
@@ -259,6 +266,43 @@ with tab_text:
 
             base_features = [f.strip() for f in edit_features.split(",") if f.strip()]
             edit_features = list(dict.fromkeys(base_features + selected_features))
+
+        # -------------------------------
+        # AI IMAGE INSIGHTS
+        # -------------------------------
+
+        if st.session_state.image_intelligence:
+
+            intelligence = st.session_state.image_intelligence
+
+            st.subheader("🧠 AI Image Insights")
+
+            if intelligence.highlight_images:
+                st.markdown("**Top Marketing Images**")
+
+                for idx, image_id in enumerate(intelligence.highlight_images, start=1):
+
+                    ranked = next(
+                        (img for img in intelligence.ranked_images if img.image_id == image_id),
+                        None
+                    )
+
+                    if ranked:
+                        st.write(
+                            f"{idx}. **{ranked.filename}** "
+                            f"({ranked.room_type or 'unknown'}) — {ranked.reason}"
+                        )
+
+            if intelligence.highlights:
+                st.markdown("**Visual Highlights**")
+
+                for highlight in intelligence.highlights:
+                    st.write(f"- {highlight.feature}")
+
+            if intelligence.weak_images:
+                st.warning(
+                    f"{len(intelligence.weak_images)} image(s) may be weaker for marketing."
+                )
 
         if details.images:
             st.subheader("📷 Uploaded Photos")
