@@ -8,12 +8,12 @@ from models.feature_candidate import FeatureCandidate
 class PropertyDetails(BaseModel):
     address: Optional[str] = Field(
         default=None,
-        description="Full property address or community name"
+        description="Full street address such as '101 Lake Ave'. Do not include community or neighborhood names."
     )
 
     city: Optional[str] = Field(
         default=None,
-        description="City where the property is located"
+        description="Official city or municipality where the property is located. Do not place neighborhood or community names here."
     )
 
     state: Optional[str] = Field(
@@ -124,6 +124,16 @@ class PropertyDetails(BaseModel):
     community_features: list[str] = Field(
         default_factory=list,
         description="Community or association amenities such as clubhouse, community pool, playground, fitness center, or gated entry. Do not include private property features."
+    )
+
+    community_name: Optional[str] = Field(
+        default=None,
+        description="Neighborhood or master-planned community name such as Lake Nona, SoHo, or Brickell. Do not place this value in the city field."
+    )
+
+    subdivision_name: Optional[str] = Field(
+        default=None,
+        description="Subdivision, residential development section, or condo building name such as Laureate Park or Baldwin Park."
     )
 
     key_features: List[str] = Field(
