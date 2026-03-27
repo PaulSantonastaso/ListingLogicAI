@@ -383,8 +383,42 @@ with tab_text:
             st.info(res["mls_summary"])
 
         with col_soc:
-            st.subheader("📱 Social Media Post")
-            st.success(res["social_media_post"])
+            st.subheader("📣 Social Launch Pack")
+
+            social_posts = res.get("social_posts", [])
+            enhanced_lookup = build_image_lookup(st.session_state.enhanced_images or [])
+
+            if social_posts:
+                for post in social_posts:
+                    platform_label = post.platform or "Social"
+                    slot_label = (post.slot_name or "social_post").replace("_", " ").title()
+                    aspect_ratio = post.recommended_aspect_ratio or "N/A"
+                    room_type = (post.room_type or "unknown").replace("_", " ").title()
+                    feature_text = ", ".join(post.visible_features) if post.visible_features else "None listed"
+
+                    st.markdown(f"### {platform_label} — {slot_label}")
+                    st.caption(f"Recommended aspect ratio: {aspect_ratio}")
+
+                    selected_image = enhanced_lookup.get(post.image_filename or "")
+                    if selected_image:
+                        st.image(selected_image, use_container_width=True)
+
+                    meta_col1, meta_col2 = st.columns(2)
+                    with meta_col1:
+                        st.caption(f"Room type: {room_type}")
+                    with meta_col2:
+                        st.caption(f"Features: {feature_text}")
+
+                    st.text_area(
+                        f"{platform_label} Caption - {slot_label}",
+                        value=post.social_media_post,
+                        height=180,
+                        key=f"social_post_{post.slot_name}_{post.image_id}"
+                    )
+
+                    st.divider()
+            else:
+                st.info("No social posts were generated.")
 
         st.divider()
         email_data = res["email_campaign"]
