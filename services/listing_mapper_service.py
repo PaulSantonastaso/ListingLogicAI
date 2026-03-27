@@ -67,6 +67,8 @@ def map_property_to_listing_details(
             city=property_details.city,
             state=property_details.state,
             postal_code=property_details.postal_code,
+            community_name=property_details.community_name,
+            subdivision_name=property_details.subdivision_name,
         ),
         pricing=PricingDetails(
             list_price=property_details.list_price,
