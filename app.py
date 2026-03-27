@@ -10,6 +10,7 @@ from services.image_analysis_service import analyze_property_images
 from services.fusion_service import merge_image_features_into_property
 from services.image_enhancement_service import enhance_listing_photos
 from services.property_normalization_service import normalize_property_details
+from services.image_intelligence_service import build_image_intelligence
 
 def build_uploaded_image_fingerprint(uploaded_files) -> str:
     """
@@ -70,6 +71,9 @@ if "original_images" not in st.session_state:
 
 if "enhanced_images" not in st.session_state:
     st.session_state.enhanced_images = None
+
+if "image_intelligence" not in st.session_state:
+    st.session_state.image_intelligence = None
 
 st.set_page_config(
     page_title="ListingLogicAI",
@@ -150,12 +154,18 @@ with tab_text:
                             )
                             st.session_state.analyzed_images = analyzed_images
                             st.session_state.uploaded_image_fingerprint = current_fingerprint
-
+                        
                         if st.session_state.analyzed_images:
+                            st.session_state.image_intelligence = build_image_intelligence(
+                                st.session_state.analyzed_images
+                            )
+
                             details = merge_image_features_into_property(
                                 details,
                                 st.session_state.analyzed_images
                             )
+                        else:
+                            st.session_state.image_intelligence = None
 
                     details = normalize_property_details(details)
 
