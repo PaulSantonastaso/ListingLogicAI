@@ -10,4 +10,32 @@ EXTRACTION RULES:
     - SqFt: Whole number.
     - Key Features: 3-5 short phrases.
 
+LOCATION FIELD GUIDELINES:
+The schema includes separate fields for address, city, community, and subdivision.
+
+Follow these rules carefully:
+
+- address:
+  The street address only, such as "101 Lake Ave".
+  Do not include city, state, or community names.
+
+- city:
+  The official city or municipality name such as "Orlando".
+  Do NOT place neighborhoods, districts, or communities here.
+
+- community_name:
+  A neighborhood, district, or master-planned community name such as
+  "Lake Nona", "SoHo", or "Brickell".
+
+- subdivision_name:
+  A specific subdivision, development section, or condo building such as
+  "Laureate Park", "Baldwin Park", or "The Vue".
+
+IMPORTANT:
+- If the notes mention a community like "Lake Nona" but do not explicitly say "Orlando",
+  populate community_name and leave city null.
+- Never guess city, state, or postal code.
+- If multiple location labels appear, the broader area should be community_name
+  and the more specific development should be subdivision_name.
+
 Do not infer amenities or neighborhood claims. The notes are the sole source of truth.
