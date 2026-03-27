@@ -364,7 +364,8 @@ with tab_text:
                     results = asyncio.run(generate_marketing_assets_service(
                         st.session_state.extracted_details,
                         api_key,
-                        email_tone
+                        email_tone,
+                        image_intelligence=st.session_state.image_intelligence,
                     ))
                     st.session_state.marketing_results = results
                 except Exception as e:
