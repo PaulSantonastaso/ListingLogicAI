@@ -304,38 +304,7 @@ with tab_text:
                     f"{len(intelligence.weak_images)} image(s) may be weaker for marketing."
                 )
 
-        if details.images:
-            st.subheader("📷 Uploaded Photos")
-
-            original_lookup = build_image_lookup(st.session_state.original_images or [])
-            enhanced_lookup = build_image_lookup(st.session_state.enhanced_images or [])
-
-            for img in details.images:
-                st.markdown(f"### {img.filename}")
-                st.divider()
-
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.caption("Original")
-                    original_bytes = original_lookup.get(img.filename)
-                    if original_bytes:
-                        st.image(original_bytes, use_container_width=True)
-
-                with col2:
-                    st.caption("Enhanced")
-                    enhanced_bytes = enhanced_lookup.get(img.filename)
-                    if enhanced_bytes:
-                        st.image(enhanced_bytes, use_container_width=True)
-
-                st.caption(img.metadata.room_type.replace("_", " ").title())
-                st.write(img.description)
-
-                if img.visible_features:
-                    feature_text = ", ".join([f.name for f in img.visible_features])
-                    st.write(f"**Detected features:** {feature_text}")
-
-                st.divider()
+        
 
         if st.button("Step 2: Generate Marketing Suite", type="primary"):
             # Manually sync the widget values back to the session state object
