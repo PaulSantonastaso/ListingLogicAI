@@ -201,7 +201,22 @@ class SocialMediaSuiteOutput(BaseModel):
     )
 
 
-class EmailCampaign(BaseModel):
-    subject: str = Field(description="High-open rate subject line using a 'hook'")
-    body: str = Field(description="Persuasive email body with a clear CTA to book a tour")
+class CampaignEmail(BaseModel):
+    subject: str = Field(description="High-open rate subject line tailored to this email's campaign stage")
+    body: str = Field(description="Persuasive email body with a clear, singular CTA appropriate for this campaign stage")
     preview_text: str = Field(description="The 1-sentence snippet seen in the inbox preview")
+ 
+ 
+class EmailCampaign(BaseModel):
+    just_listed: CampaignEmail = Field(
+        description="Day 1 email. Creates urgency and exclusivity to drive immediate inquiries from the agent's database."
+    )
+    open_house: CampaignEmail = Field(
+        description="Day 3-5 email. Drives foot traffic to the open house with an RSVP feel and lifestyle-forward copy."
+    )
+    why_this_home: CampaignEmail = Field(
+        description="Day 7-10 email. A slower-burn, educational email that sells the lifestyle and explains why this specific home stands out to hesitant buyers."
+    )
+    just_sold: CampaignEmail = Field(
+        description="Post-close email. Builds the agent's brand by showcasing results. Use [DAYS ON MARKET] and [SOLD PRICE] as placeholders for the agent to fill in before sending."
+    )

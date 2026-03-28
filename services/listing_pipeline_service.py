@@ -4,7 +4,7 @@ from chains.extraction_chain import build_extraction_chain
 from chains.listing_description_chain import build_listing_description_chain
 from chains.social_post_chain import build_social_post_chain
 from chains.email_chain import build_email_chain
-from models.property_data import EmailCampaign, PropertyDetails, ListingDescriptionOutput, SocialPostOutput
+from models.property_data import CampaignEmail, EmailCampaign, PropertyDetails, ListingDescriptionOutput, SocialPostOutput
 from services.visual_summary_service import build_visual_summary
 from services.compliance_service import ComplianceService
 from services.listing_mapper_service import map_property_to_listing_details
@@ -15,9 +15,9 @@ from services.social_image_planner_service import build_social_image_plan
 
 async def extract_property_data_service(raw_notes: str, api_key: str) -> PropertyDetails:
     extraction_chain = build_extraction_chain(api_key)
-    
+
     extracted_details = await extraction_chain.ainvoke({"raw_notes": raw_notes})
-    
+
     return cast(PropertyDetails, extracted_details)
 
 
@@ -41,7 +41,6 @@ async def generate_marketing_assets_service(
     })
     listing_output = cast(ListingDescriptionOutput, listing_result)
 
-    social_posts: list[SocialPostOutput] = []
     social_plan = build_social_image_plan(image_intelligence)
 
     if social_plan:
@@ -85,30 +84,66 @@ async def generate_marketing_assets_service(
     })
 
     results = await asyncio.gather(*social_tasks, email_task)
-    social_results = results[:-1]
-    email_res = results[-1]
+    social_posts: list[SocialPostOutput] = [cast(SocialPostOutput, r) for r in results[:-1]]
+    email_output = cast(EmailCampaign, results[-1])
 
-    listing_details = map_property_to_listing_details(
-        details,
-        public_remarks=listing_output.mls_summary,
-    )
-
-    reso_csv = build_reso_csv_string(listing_details)
-
-    social_posts = [cast(SocialPostOutput, result) for result in social_results]
-    email_output = cast(EmailCampaign, email_res)
-
-    primary_social_post = social_posts[0].social_media_post if social_posts else ""
-
-    compliance_results = await compliance_service.review_assets({
+    # --- Build compliance asset map ---
+    # MLS description
+    assets: dict[str, str] = {
         "mls_summary": listing_output.mls_summary,
-        "social_media_post": primary_social_post,
-        "email_subject": email_output.subject,
-        "email_body": email_output.body,
-        "email_preview_text": email_output.preview_text,
-    })
+    }
 
+    # All social posts
+    for i, post in enumerate(social_posts):
+        platform = (post.platform or "social").lower().replace(" ", "_")
+        slot = post.slot_name or f"post_{i + 1}"
+        assets[f"social_{platform}_{slot}"] = post.social_media_post
+
+    # All 4 campaign emails — subject + body reviewed independently
+    assets["email_just_listed_subject"] = email_output.just_listed.subject
+    assets["email_just_listed_body"] = email_output.just_listed.body
+    assets["email_open_house_subject"] = email_output.open_house.subject
+    assets["email_open_house_body"] = email_output.open_house.body
+    assets["email_why_this_home_subject"] = email_output.why_this_home.subject
+    assets["email_why_this_home_body"] = email_output.why_this_home.body
+    assets["email_just_sold_subject"] = email_output.just_sold.subject
+    assets["email_just_sold_body"] = email_output.just_sold.body
+
+    # --- Run all compliance checks in parallel ---
+    compliance_results = await compliance_service.review_assets(assets)
+
+    # --- Apply compliant text back to outputs ---
     final_mls_summary = compliance_results["mls_summary"].compliant_text
+
+    for i, post in enumerate(social_posts):
+        platform = (post.platform or "social").lower().replace(" ", "_")
+        slot = post.slot_name or f"post_{i + 1}"
+        key = f"social_{platform}_{slot}"
+        if key in compliance_results:
+            post.social_media_post = compliance_results[key].compliant_text
+
+    compliant_campaign = EmailCampaign(
+        just_listed=CampaignEmail(
+            subject=compliance_results["email_just_listed_subject"].compliant_text,
+            body=compliance_results["email_just_listed_body"].compliant_text,
+            preview_text=email_output.just_listed.preview_text,
+        ),
+        open_house=CampaignEmail(
+            subject=compliance_results["email_open_house_subject"].compliant_text,
+            body=compliance_results["email_open_house_body"].compliant_text,
+            preview_text=email_output.open_house.preview_text,
+        ),
+        why_this_home=CampaignEmail(
+            subject=compliance_results["email_why_this_home_subject"].compliant_text,
+            body=compliance_results["email_why_this_home_body"].compliant_text,
+            preview_text=email_output.why_this_home.preview_text,
+        ),
+        just_sold=CampaignEmail(
+            subject=compliance_results["email_just_sold_subject"].compliant_text,
+            body=compliance_results["email_just_sold_body"].compliant_text,
+            preview_text=email_output.just_sold.preview_text,
+        ),
+    )
 
     listing_details = map_property_to_listing_details(
         details,
@@ -117,19 +152,12 @@ async def generate_marketing_assets_service(
 
     reso_csv = build_reso_csv_string(listing_details)
 
-    if social_posts:
-        social_posts[0].social_media_post = compliance_results["social_media_post"].compliant_text
-
     return {
-        "mls_summary": compliance_results["mls_summary"].compliant_text,
+        "mls_summary": final_mls_summary,
         "social_media_post": social_posts[0].social_media_post if social_posts else "",
         "social_posts": social_posts,
         "social_image_plan": social_plan,
-        "email_campaign": EmailCampaign(
-            subject=compliance_results["email_subject"].compliant_text,
-            body=compliance_results["email_body"].compliant_text,
-            preview_text=compliance_results["email_preview_text"].compliant_text,
-        ),
+        "email_campaign": compliant_campaign,
         "compliance_results": list(compliance_results.values()),
         "listing_details": listing_details,
         "reso_csv": reso_csv,

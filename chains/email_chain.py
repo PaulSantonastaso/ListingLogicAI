@@ -18,7 +18,7 @@ def build_email_chain(api_key: str):
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
         ("user", (
-            "Generate a lead generation email using the following inputs.\n\n"
+            "Generate the complete 4-email listing campaign using the following inputs.\n\n"
             "Tone:\n{email_tone}\n\n"
             "MLS Description:\n{mls_summary}\n\n"
             "Visual Summary:\n{visual_summary}"
