@@ -106,6 +106,16 @@ class PropertyDetails(BaseModel):
         description="Private on-property pool features such as in-ground pool, heated pool, spa, or screened enclosure. Do not include community pool amenities."
     )
 
+    cooling: Optional[str] = Field(
+        default=None,
+        description="Cooling system type such as Central Air, Mini-Split, or Window Units. Only extract if explicitly stated in the notes."
+    )
+
+    heating: Optional[str] = Field(
+        default=None,
+        description="Heating system type such as Central, Electric, Gas, or Heat Pump. Only extract if explicitly stated in the notes."
+    )
+
     hoa: Optional[bool] = Field(
         default=None,
         description="Whether the property is part of a Homeowners Association"
