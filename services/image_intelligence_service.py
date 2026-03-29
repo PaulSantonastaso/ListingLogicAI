@@ -14,6 +14,7 @@ ROOM_WEIGHTS = {
     "back_exterior": 0.9,
     "backyard": 0.9,
     "patio": 0.85,
+    "pool": 0.95,
     "living_room": 0.85,
     "kitchen": 0.85,
     "dining_room": 0.75,

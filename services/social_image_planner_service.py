@@ -42,6 +42,8 @@ def _build_crop_guidance(image: RankedImage) -> str:
         return "Keep the entertaining area centered and avoid cropping out major outdoor features."
     if room_type == "kitchen":
         return "Preserve the full kitchen layout and avoid tight crops that remove cabinetry, island, or countertops."
+    if room_type == "pool":
+        return "Frame the full pool and spa. Keep the screen enclosure visible to show the full outdoor oasis."
     if room_type == "living_room":
         return "Keep the room wide and balanced so the layout and natural light remain clear."
     if room_type == "dining_room":
@@ -91,7 +93,7 @@ def build_social_image_plan(image_intelligence: Optional[ImageIntelligence]) -> 
     facebook_image = _pick_best_by_room(
         ranked_images,
         excluded_image_ids=used_image_ids,
-        preferred_room_types=["front_exterior", "back_exterior", "backyard", "patio", "living_room", "kitchen"],
+        preferred_room_types=["front_exterior", "pool", "back_exterior", "backyard", "patio", "living_room", "kitchen"],
     ) or _pick_next_best(ranked_images, excluded_image_ids=used_image_ids)
 
     if facebook_image:
