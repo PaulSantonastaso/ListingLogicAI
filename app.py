@@ -487,6 +487,7 @@ with tab_generator:
                             API_KEY,
                             email_tone,
                             image_intelligence=st.session_state.image_intelligence,
+                            photos_count=len(st.session_state.original_images or []),
                         )
                     )
                     st.session_state.marketing_results = results

@@ -34,6 +34,10 @@ class PricingDetails(BaseModel):
         default=None,
         description="Current listing price in whole dollars"
     )
+    original_list_price: Optional[int] = Field(
+        default=None,
+        description="Original listing price at time of first listing. Same as list_price on day one. Preserved for data integrity if price changes later."
+    )
 
 
 class BasicPropertyDetails(BaseModel):
@@ -73,6 +77,30 @@ class BasicPropertyDetails(BaseModel):
         default=None,
         description="Total number of stories or floors in the property"
     )
+    cooling: Optional[str] = Field(
+        default=None,
+        description="Cooling system type. Defaults to Central Air if not explicitly stated in notes."
+    )
+    heating: Optional[str] = Field(
+        default=None,
+        description="Heating system type. Defaults to Central if not explicitly stated in notes."
+    )
+    fireplace_yn: Optional[bool] = Field(
+        default=None,
+        description="Whether the property has a fireplace. Derived from interior features."
+    )
+    fireplaces_total: Optional[int] = Field(
+        default=None,
+        description="Total number of fireplaces. Derived from interior features."
+    )
+    pool_private_yn: Optional[bool] = Field(
+        default=None,
+        description="Whether the property has a private pool. Derived from pool features."
+    )
+    spa_yn: Optional[bool] = Field(
+        default=None,
+        description="Whether the property has a spa or hot tub. Derived from pool features."
+    )
 
 
 class InteriorDetails(BaseModel):
@@ -83,6 +111,10 @@ class InteriorDetails(BaseModel):
     appliances: List[str] = Field(
         default_factory=list,
         description="Appliances included with the property such as dishwasher, refrigerator, microwave, or range"
+    )
+    flooring: List[str] = Field(
+        default_factory=list,
+        description="Flooring types present in the property such as Tile, Vinyl, LVP, or Hardwood"
     )
 
 
@@ -132,6 +164,17 @@ class RemarksDetails(BaseModel):
         default=None,
         description="Public-facing MLS remarks describing the property"
     )
+    showing_instructions: Optional[str] = Field(
+        default=None,
+        description="Instructions for scheduling showings. Pre-populated with a smart default agents can edit."
+    )
+
+
+class PhotoDetails(BaseModel):
+    photos_count: Optional[int] = Field(
+        default=None,
+        description="Total number of photos uploaded for this listing. Derived from uploaded image count."
+    )
 
 
 class ListingDetails(BaseModel):
@@ -149,7 +192,7 @@ class ListingDetails(BaseModel):
     )
     interior: InteriorDetails = Field(
         default_factory=InteriorDetails,
-        description="Interior features and appliances"
+        description="Interior features, appliances, and flooring"
     )
     exterior: ExteriorDetails = Field(
         default_factory=ExteriorDetails,
@@ -165,5 +208,9 @@ class ListingDetails(BaseModel):
     )
     remarks: RemarksDetails = Field(
         default_factory=RemarksDetails,
-        description="Public remarks and other listing text fields"
+        description="Public remarks and showing instructions"
+    )
+    photos: PhotoDetails = Field(
+        default_factory=PhotoDetails,
+        description="Photo count and related metadata for the listing"
     )

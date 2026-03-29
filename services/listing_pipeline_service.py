@@ -28,6 +28,7 @@ async def generate_marketing_assets_service(
     api_key: str,
     email_tone: str = "Professional",
     image_intelligence: Optional[ImageIntelligence] = None,
+    photos_count: Optional[int] = None,
 ):
     listing_chain = build_listing_description_chain(api_key)
     social_chain = build_social_post_chain(api_key)
@@ -189,6 +190,7 @@ async def generate_marketing_assets_service(
     listing_details = map_property_to_listing_details(
         details,
         public_remarks=final_mls_summary,
+        photos_count=photos_count,
     )
 
     reso_csv = build_reso_csv_string(listing_details)
