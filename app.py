@@ -2,14 +2,15 @@ import asyncio
 import streamlit as st
 import hashlib
 from services.listing_pipeline_service import (
-    extract_property_data_service, 
+    extract_property_data_service,
     generate_marketing_assets_service
 )
-from models.property_data import PropertyDetails
 from services.image_analysis_service import analyze_property_images
 from services.fusion_service import merge_image_features_into_property
 from services.image_enhancement_service import enhance_listing_photos
 from services.property_normalization_service import normalize_property_details
+from services.image_intelligence_service import build_image_intelligence
+
 
 def build_uploaded_image_fingerprint(uploaded_files) -> str:
     """
@@ -24,6 +25,7 @@ def build_uploaded_image_fingerprint(uploaded_files) -> str:
 
     return hasher.hexdigest()
 
+
 def extract_room_from_evidence(evidence: str | None) -> str:
     if not evidence or "(" not in evidence or ")" not in evidence:
         return "other"
@@ -32,14 +34,15 @@ def extract_room_from_evidence(evidence: str | None) -> str:
         return evidence.split("(")[-1].split(")")[0].strip()
     except Exception:
         return "other"
-    
+
+
 def group_feature_candidates(candidates):
     grouped = {}
 
     for candidate in candidates:
         room = extract_room_from_evidence(candidate.evidence)
         grouped.setdefault(room, []).append(candidate)
-    
+
     for room in grouped:
         grouped[room].sort(
             key=lambda x: x.confidence,
@@ -48,10 +51,45 @@ def group_feature_candidates(candidates):
 
     return grouped
 
+
 def build_image_lookup(images):
     if not images:
         return {}
     return {filename: image_bytes for image_bytes, filename in images}
+
+
+def render_social_post_card(post, enhanced_lookup):
+    platform_label = post.platform or "Social"
+    slot_label = (post.slot_name or "social_post").replace("_", " ").title()
+    aspect_ratio = post.recommended_aspect_ratio or "N/A"
+    room_type = (post.room_type or "unknown").replace("_", " ").title()
+    feature_text = ", ".join(post.visible_features) if post.visible_features else "None listed"
+
+    st.markdown(f"### {platform_label}")
+    st.caption(f"{slot_label} • Recommended aspect ratio: {aspect_ratio}")
+
+    selected_image = enhanced_lookup.get(post.image_filename or "")
+    if selected_image:
+        st.image(selected_image, use_container_width=True)
+    else:
+        st.info("Selected image preview unavailable.")
+
+    meta_col1, meta_col2 = st.columns(2)
+    with meta_col1:
+        st.caption(f"Room: {room_type}")
+    with meta_col2:
+        st.caption(f"Features: {feature_text}")
+
+    if getattr(post, "crop_guidance", None):
+        st.caption(f"Crop guidance: {post.crop_guidance}")
+
+    st.text_area(
+        f"{platform_label} Caption - {slot_label}",
+        value=post.social_media_post,
+        height=220,
+        key=f"social_post_{post.slot_name}_{post.image_id}"
+    )
+
 
 if "extracted_details" not in st.session_state:
     st.session_state.extracted_details = None
@@ -71,6 +109,9 @@ if "original_images" not in st.session_state:
 if "enhanced_images" not in st.session_state:
     st.session_state.enhanced_images = None
 
+if "image_intelligence" not in st.session_state:
+    st.session_state.image_intelligence = None
+
 st.set_page_config(
     page_title="ListingLogicAI",
     page_icon="🏠",
@@ -80,9 +121,9 @@ st.set_page_config(
 with st.sidebar:
     st.title("Settings")
     api_key = st.text_input("Enter Gemini API Key", type="password")
-    
+
     st.info("Your key is used only for this session.")
-    
+
     st.divider()
     st.header("Customization")
 
@@ -91,8 +132,7 @@ with st.sidebar:
         ["Professional", "Luxury", "Casual", "Urgent"],
         index=0,
         help="Select the 'voice' for the lead-gen email campaign."
-    )    
-
+    )
 
 st.title("🏠 ListingLogicAI")
 st.markdown("Transform messy notes into professional multi-channel marketing.")
@@ -125,6 +165,13 @@ with tab_text:
                 try:
                     details = asyncio.run(extract_property_data_service(user_notes, api_key))
 
+                    if not uploaded_images:
+                        st.session_state.analyzed_images = None
+                        st.session_state.original_images = None
+                        st.session_state.enhanced_images = None
+                        st.session_state.uploaded_image_fingerprint = None
+                        st.session_state.image_intelligence = None
+
                     if uploaded_images:
                         current_fingerprint = build_uploaded_image_fingerprint(uploaded_images)
 
@@ -132,7 +179,6 @@ with tab_text:
                             st.session_state.analyzed_images is None
                             or st.session_state.uploaded_image_fingerprint != current_fingerprint
                         ):
-
                             images = []
 
                             for file in uploaded_images:
@@ -142,7 +188,6 @@ with tab_text:
                             st.session_state.original_images = images
                             enhanced_images = enhance_listing_photos(images)
                             st.session_state.enhanced_images = enhanced_images
-                            # debugging line to check the number of enhanced images
                             st.caption(f"Enhanced {len(enhanced_images)} images")
 
                             analyzed_images = asyncio.run(
@@ -152,10 +197,16 @@ with tab_text:
                             st.session_state.uploaded_image_fingerprint = current_fingerprint
 
                         if st.session_state.analyzed_images:
+                            st.session_state.image_intelligence = build_image_intelligence(
+                                st.session_state.analyzed_images
+                            )
+
                             details = merge_image_features_into_property(
                                 details,
                                 st.session_state.analyzed_images
                             )
+                        else:
+                            st.session_state.image_intelligence = None
 
                     details = normalize_property_details(details)
 
@@ -165,7 +216,6 @@ with tab_text:
                 except Exception as e:
                     st.error(f"Extraction Error: {e}")
 
-    # Only displays if we have successfully extracted data
     if st.session_state.extracted_details is not None:
         st.divider()
         st.subheader("🛠 Verify & Edit Property Details")
@@ -216,9 +266,9 @@ with tab_text:
                 "Baths",
                 value=float(details.bathrooms or 0)
             )
-        
+
         edit_features = st.text_area(
-            "Key Features (comma separated)", 
+            "Key Features (comma separated)",
             value=", ".join(st.session_state.extracted_details.key_features)
         )
 
@@ -250,41 +300,37 @@ with tab_text:
             base_features = [f.strip() for f in edit_features.split(",") if f.strip()]
             edit_features = list(dict.fromkeys(base_features + selected_features))
 
-        if details.images:
-            st.subheader("📷 Uploaded Photos")
+        if st.session_state.image_intelligence:
+            intelligence = st.session_state.image_intelligence
 
-            original_lookup = build_image_lookup(st.session_state.original_images or [])
-            enhanced_lookup = build_image_lookup(st.session_state.enhanced_images or [])
+            st.subheader("🧠 AI Image Insights")
 
-            for img in details.images:
-                st.markdown(f"### {img.filename}")
-                st.divider()
+            if intelligence.highlight_images:
+                st.markdown("**Selected for Social**")
 
-                col1, col2 = st.columns(2)
+                for idx, image_id in enumerate(intelligence.highlight_images, start=1):
+                    ranked = next(
+                        (img for img in intelligence.ranked_images if img.image_id == image_id),
+                        None
+                    )
 
-                with col1:
-                    st.caption("Original")
-                    original_bytes = original_lookup.get(img.filename)
-                    if original_bytes:
-                        st.image(original_bytes, use_container_width=True)
+                    if ranked:
+                        st.write(
+                            f"{idx}. **{ranked.filename}** "
+                            f"({ranked.room_type or 'unknown'}) — {ranked.reason}"
+                        )
 
-                with col2:
-                    st.caption("Enhanced")
-                    enhanced_bytes = enhanced_lookup.get(img.filename)
-                    if enhanced_bytes:
-                        st.image(enhanced_bytes, use_container_width=True)
+            if intelligence.highlights:
+                st.markdown("**Visual Highlights**")
+                for highlight in intelligence.highlights:
+                    st.write(f"- {highlight.feature}")
 
-                st.caption(img.metadata.room_type.replace("_", " ").title())
-                st.write(img.description)
-
-                if img.visible_features:
-                    feature_text = ", ".join([f.name for f in img.visible_features])
-                    st.write(f"**Detected features:** {feature_text}")
-
-                st.divider()
+            if intelligence.weak_images:
+                st.warning(
+                    f"{len(intelligence.weak_images)} image(s) may be weaker for marketing."
+                )
 
         if st.button("Step 2: Generate Marketing Suite", type="primary"):
-            # Manually sync the widget values back to the session state object
             st.session_state.extracted_details.address = edit_address.strip() or None
             st.session_state.extracted_details.city = edit_city.strip() or None
             st.session_state.extracted_details.state = edit_state.strip() or None
@@ -295,6 +341,7 @@ with tab_text:
             st.session_state.extracted_details.list_price = int(edit_price or 0)
             st.session_state.extracted_details.bedrooms = int(edit_beds or 0)
             st.session_state.extracted_details.bathrooms = float(edit_baths or 0.0)
+
             if isinstance(edit_features, list):
                 st.session_state.extracted_details.key_features = [
                     f.strip() for f in edit_features if f.strip()
@@ -306,21 +353,19 @@ with tab_text:
 
             with st.spinner("Generating marketing assets from your edits..."):
                 try:
-                    # Run the Parallel Async marketing chains
                     results = asyncio.run(generate_marketing_assets_service(
                         st.session_state.extracted_details,
                         api_key,
-                        email_tone
+                        email_tone,
+                        image_intelligence=st.session_state.image_intelligence,
                     ))
                     st.session_state.marketing_results = results
                 except Exception as e:
                     st.error(f"Generation Error: {e}")
 
-    # This block is now outside of any button logic, so the results stay visible
     if st.session_state.marketing_results:
         res = st.session_state.marketing_results
-        details = st.session_state.extracted_details
-        
+
         st.success("Campaign Generated Successfully!")
         st.divider()
 
@@ -331,6 +376,27 @@ with tab_text:
                 file_name="listing_import.csv",
                 mime="text/csv",
             )
+
+        st.subheader("📋 MLS Description")
+        st.info(res["mls_summary"])
+
+        st.divider()
+        st.subheader("📣 Social Launch Pack")
+
+        social_posts = res.get("social_posts", [])
+        enhanced_lookup = build_image_lookup(st.session_state.enhanced_images or [])
+
+        if social_posts:
+            num_posts = len(social_posts)
+            columns = st.columns(num_posts)
+
+            for col, post in zip(columns, social_posts):
+                with col:
+                    render_social_post_card(post, enhanced_lookup)
+        else:
+            st.info("No social posts were generated.")
+
+        st.divider()
 
         if "compliance_results" in res:
             with st.expander("⚖️ Compliance Review"):
@@ -353,19 +419,9 @@ with tab_text:
 
                     st.divider()
 
-        col_mls, col_soc = st.columns(2)
-        with col_mls:
-            st.subheader("📋 MLS Description")
-            st.info(res["mls_summary"])
-
-        with col_soc:
-            st.subheader("📱 Social Media Post")
-            st.success(res["social_media_post"])
-
-        st.divider()
         email_data = res["email_campaign"]
         st.subheader(f"📧 Lead-Gen Email ({email_tone} Tone)")
-        
+
         email_col1, email_col2 = st.columns([1, 2])
         with email_col1:
             st.markdown(f"**Subject:** {email_data.subject}")
@@ -374,7 +430,6 @@ with tab_text:
             st.text_area("Email Body", value=email_data.body, height=300)
 
         with st.expander("📊 Final Data Used (Source of Truth)"):
-            # Always check if the object exists before accessing attributes
             if st.session_state.extracted_details:
                 data = st.session_state.extracted_details
                 st.write(f"**Street Address:** {data.address or 'N/A'}")
