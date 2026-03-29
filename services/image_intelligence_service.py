@@ -148,16 +148,18 @@ def build_image_intelligence(images: List[PropertyImage]) -> ImageIntelligence:
         return ImageIntelligence()
 
     ranked = _rank_images(images)
-
     weak = _detect_weak_images(images)
-
     highlights = _extract_highlights(images)
-
     highlight_images = _select_highlight_images(ranked)
+
+    # The hero image is the single highest-scoring image after ranking.
+    # It anchors the email campaign copy and informs the video shot list.
+    hero_image_id = ranked[0].image_id if ranked else None
 
     return ImageIntelligence(
         ranked_images=ranked,
         weak_images=weak,
         highlight_images=highlight_images,
+        hero_image_id=hero_image_id,
         highlights=highlights,
     )

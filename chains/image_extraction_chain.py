@@ -85,7 +85,7 @@ def extract_property_image(
     filename: str,
     api_key: str,
     image_id: str | None = None,
-    model_name: str = "gemini-2.5-flash",
+    model_name: str = "gemini-2.5-flash-lite",
 ) -> PropertyImage:
     """
     Analyze one uploaded image and return a structured PropertyImage object.
