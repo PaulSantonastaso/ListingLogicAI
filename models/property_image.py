@@ -13,6 +13,7 @@ RoomType = Literal[
     "office",
     "backyard",
     "patio",
+    "pool",
     "garage",
     "other",
 ]
