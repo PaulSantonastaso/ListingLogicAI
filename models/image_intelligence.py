@@ -37,4 +37,8 @@ class ImageIntelligence(BaseModel):
     weak_images: List[WeakImage] = Field(default_factory=list)
     highlight_images: List[str] = Field(default_factory=list)
     highlights: List[ImageHighlight] = Field(default_factory=list)
+    hero_image_id: Optional[str] = Field(
+        default=None,
+        description="Image ID of the single highest-scoring image across all uploads. Used as the anchor visual for email campaigns."
+    )
     summary: Optional[str] = None

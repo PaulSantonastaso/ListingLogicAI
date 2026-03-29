@@ -8,7 +8,7 @@ def build_listing_description_chain(api_key: str):
     system_prompt = load_prompt_text("mls_writer.txt")
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
+        model="gemini-2.5-flash",
         google_api_key=api_key,
         temperature=0.7,
     )

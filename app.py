@@ -125,6 +125,64 @@ def render_email_card(label: str, email, key_prefix: str):
     )
 
 
+def render_video_script_card(script, enhanced_lookup, key_prefix: str):
+    """Render a single platform video script with hook, shot list, voiceover, and CTA."""
+    st.markdown(f"**⏱ Target Duration:** {script.duration_seconds} seconds")
+    st.divider()
+
+    # Hook
+    st.markdown("**🎣 Hook**")
+    st.caption("Spoken or shown in the first 2-3 seconds — stops the scroll.")
+    st.info(script.hook)
+
+    # Shot list
+    if script.shots:
+        st.markdown("**🎬 Shot List**")
+        st.caption("Film these shots in order. Each maps to a specific space in the property.")
+
+        for shot in script.shots:
+            with st.container():
+                shot_col1, shot_col2 = st.columns([1, 2])
+
+                with shot_col1:
+                    image_bytes = enhanced_lookup.get(shot.image_filename or "")
+                    if image_bytes:
+                        st.image(image_bytes, use_container_width=True)
+                        st.caption(
+                            (shot.room_type or "").replace("_", " ").title()
+                        )
+                    else:
+                        room_label = (shot.room_type or "No image").replace("_", " ").title()
+                        st.markdown(
+                            f"<div style='background:#f0f2f6;border-radius:8px;"
+                            f"padding:24px;text-align:center;color:#666;'>"
+                            f"📷 {room_label}</div>",
+                            unsafe_allow_html=True,
+                        )
+
+                with shot_col2:
+                    st.markdown(f"**Shot {shot.order}**")
+                    if shot.visible_features:
+                        st.caption("Features: " + ", ".join(shot.visible_features))
+                    st.write(f"🎥 {shot.direction}")
+
+                st.markdown("---")
+
+    # Voiceover
+    st.markdown("**🎙 Voiceover Script**")
+    st.caption("Read this while filming or record it in post.")
+    st.text_area(
+        "Voiceover",
+        value=script.voiceover,
+        height=200,
+        key=f"{key_prefix}_voiceover",
+    )
+
+    # CTA
+    st.markdown("**📣 Call to Action**")
+    st.success(script.cta)
+
+
 def render_compliance_badge(review):
     status_icon = {"pass": "✅", "revised": "✏️", "flagged": "⚠️"}.get(review.status, "ℹ️")
     label = review.asset_type.replace("_", " ").title()
@@ -198,7 +256,7 @@ with tab_generator:
             "Upload Property Photos",
             type=["jpg", "jpeg", "png"],
             accept_multiple_files=True,
-            help="Upload listing photos. AI Image Intelligence will score and select the best ones for your social posts.",
+            help="Upload listing photos. AI Image Intelligence will score and select the best ones for your social posts and video scripts.",
         )
 
         user_notes = st.text_area(
@@ -230,7 +288,6 @@ with tab_generator:
                         extract_property_data_service(user_notes, API_KEY)
                     )
 
-                    # Reset image state if no images uploaded
                     if not uploaded_images:
                         st.session_state.analyzed_images = None
                         st.session_state.original_images = None
@@ -304,7 +361,6 @@ with tab_generator:
             value=", ".join(st.session_state.extracted_details.key_features),
         )
 
-        # Image-detected feature candidates
         details = st.session_state.extracted_details
         if details.feature_candidates:
             st.markdown("---")
@@ -354,6 +410,18 @@ with tab_generator:
                                 f"({ranked.room_type or 'unknown'}) — {ranked.reason}"
                             )
 
+                if intelligence.hero_image_id:
+                    st.markdown("**Hero Image**")
+                    hero = next(
+                        (img for img in intelligence.ranked_images if img.image_id == intelligence.hero_image_id),
+                        None,
+                    )
+                    if hero:
+                        st.write(
+                            f"⭐ **{hero.filename}** "
+                            f"({hero.room_type or 'unknown'}) — used to anchor email and video content"
+                        )
+
             with intel_col2:
                 if intelligence.highlights:
                     st.markdown("**Visual Highlights**")
@@ -392,7 +460,6 @@ with tab_generator:
         generate_btn = st.button("Step 2: Generate Marketing Suite", type="primary", use_container_width=True)
 
         if generate_btn:
-            # Sync widget values back to session state
             st.session_state.extracted_details.address = edit_address.strip() or None
             st.session_state.extracted_details.city = edit_city.strip() or None
             st.session_state.extracted_details.state = edit_state.strip() or None
@@ -430,6 +497,8 @@ with tab_generator:
     if st.session_state.marketing_results:
         res = st.session_state.marketing_results
         campaign = res["email_campaign"]
+        video_suite = res.get("video_scripts")
+        enhanced_lookup = build_image_lookup(st.session_state.enhanced_images or [])
 
         st.success("✅ Campaign generated successfully!")
         st.divider()
@@ -455,7 +524,6 @@ with tab_generator:
         # Social posts
         st.subheader("📣 Social Launch Pack")
         social_posts = res.get("social_posts", [])
-        enhanced_lookup = build_image_lookup(st.session_state.enhanced_images or [])
 
         if social_posts:
             social_cols = st.columns(len(social_posts))
@@ -500,6 +568,31 @@ with tab_generator:
 
         st.divider()
 
+        # Video scripts
+        if video_suite:
+            st.subheader("🎬 Short Form Video Scripts")
+            st.caption(
+                "Three platform-native scripts with shot-by-shot directions. "
+                "Film with your phone — no video experience required."
+            )
+
+            video_tabs = st.tabs([
+                "📱 Instagram Reel",
+                "🎵 TikTok",
+                "▶️ YouTube Short",
+            ])
+
+            with video_tabs[0]:
+                render_video_script_card(video_suite.reel, enhanced_lookup, "reel")
+
+            with video_tabs[1]:
+                render_video_script_card(video_suite.tiktok, enhanced_lookup, "tiktok")
+
+            with video_tabs[2]:
+                render_video_script_card(video_suite.youtube_short, enhanced_lookup, "youtube_short")
+
+            st.divider()
+
         # Compliance review
         if "compliance_results" in res:
             with st.expander("⚖️ Fair Housing Compliance Review", expanded=False):
@@ -535,13 +628,3 @@ with tab_generator:
                 st.text(res["reso_csv"])
             else:
                 st.write("No data extracted yet.")
-
-# ===========================================================================
-# TAB 2 — PHOTO ENHANCER (placeholder for future standalone tool)
-# ===========================================================================
-with tab_photos:
-    st.subheader("📸 Photo Enhancer")
-    st.info(
-        "Upload photos here to enhance them independently of the listing generator. "
-        "Coming soon as a standalone tool."
-    )

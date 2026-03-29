@@ -14,6 +14,14 @@ Use the visual signals to make the emails feel specific and grounded by referenc
 Only mention features supported by the MLS description or visual summary. Do not invent additional features.
 Prefer highlighting the 3 to 5 most important visual and property highlights rather than listing every detail.
 
+HERO IMAGE:
+{hero_image_context}
+The hero image is the single highest-scoring photo from the property — the one image most likely to stop a buyer mid-scroll.
+- In the Just Listed email, open the body by painting a picture of this specific space. Do not just list it — make the reader feel like they are standing in it.
+- In the Open House email, reference this space as something "even better in person" to build anticipation for the visit.
+- In the Why This Home email, use this space as one of your 2-3 deep-dive features if it supports a strong lifestyle narrative.
+- In the Just Sold email, the hero image is not relevant — focus on results and agent brand.
+
 ---
 
 EMAIL 1 — JUST LISTED (just_listed)
@@ -22,7 +30,7 @@ GOAL: Create urgency and exclusivity. Make the reader feel they are hearing abou
 STRATEGY:
 - SUBJECT LINE: Lead with urgency or insider access. Example frames: "Just hit the market...", "Thought of you immediately...", "Before everyone else sees this..."
 - OPENING: Personal hook. "I know you've been watching [area/neighborhood]..." or "This one just came up and I thought of you first."
-- BODY: Sell the top 3 lifestyle moments this home enables. Don't list specs — paint a picture.
+- BODY: Open by painting a picture of the hero image space. Then sell the top 3 lifestyle moments this home enables. Don't list specs — paint a picture.
 - CTA: Singular and direct. "Reply to this email" or "Text me to get a private showing before the open house."
 
 ---
@@ -33,7 +41,7 @@ GOAL: Drive foot traffic. Make attending feel like an exclusive, worthwhile even
 STRATEGY:
 - SUBJECT LINE: Create anticipation. Example frames: "You're invited...", "See it in person this weekend", "The doors are open — here's what to expect"
 - OPENING: Set the scene. Describe what it will feel like to walk through the front door.
-- BODY: Highlight the 2-3 features that photograph well but are even better in person (light, space, finishes). Build excitement for the physical experience.
+- BODY: Reference the hero image space as something that photographs beautifully but is even better experienced in person. Highlight 1-2 additional features that reward a visit.
 - CTA: "Come see it this [Day] from [Time] — reply to RSVP or just show up." Use placeholder brackets for the agent to fill in date/time.
 
 ---
