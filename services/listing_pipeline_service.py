@@ -45,6 +45,7 @@ async def generate_marketing_assets_service(
         "visual_summary": visual_summary,
     })
     listing_output = cast(ListingDescriptionOutput, listing_result)
+    headline = listing_output.headline
 
     # --- Build image-informed plans ---
     social_plan = build_social_image_plan(image_intelligence)
@@ -62,6 +63,7 @@ async def generate_marketing_assets_service(
                 "property_details": property_details_json,
                 "mls_summary": listing_output.mls_summary,
                 "visual_summary": visual_summary,
+                "headline": headline,
                 "platform": slot.platform,
                 "slot_name": slot.slot_name,
                 "image_id": slot.image_id,
@@ -79,6 +81,7 @@ async def generate_marketing_assets_service(
                 "property_details": property_details_json,
                 "mls_summary": listing_output.mls_summary,
                 "visual_summary": visual_summary,
+                "headline": headline,
                 "platform": "Facebook",
                 "slot_name": "fallback_social_post",
                 "image_id": "",
@@ -95,6 +98,7 @@ async def generate_marketing_assets_service(
         "mls_summary": listing_output.mls_summary,
         "email_tone": email_tone,
         "visual_summary": visual_summary,
+        "headline": headline,
         "hero_image_context": hero_image_context_email,
     })
 
@@ -197,6 +201,7 @@ async def generate_marketing_assets_service(
 
     return {
         "mls_summary": final_mls_summary,
+        "headline": headline,
         "social_media_post": social_posts[0].social_media_post if social_posts else "",
         "social_posts": social_posts,
         "social_image_plan": social_plan,

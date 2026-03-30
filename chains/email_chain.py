@@ -44,7 +44,8 @@ def build_email_chain(api_key: str):
             "Generate the complete 4-email listing campaign using the following inputs.\n\n"
             "Tone:\n{email_tone}\n\n"
             "MLS Description:\n{mls_summary}\n\n"
-            "Visual Summary:\n{visual_summary}"
+            "Visual Summary:\n{visual_summary}\n\n"
+            "Listing Headline:\n{headline}\n\n"
             "Hero Image:\n{hero_image_context}"
         ))
     ])
