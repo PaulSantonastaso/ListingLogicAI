@@ -22,6 +22,7 @@ def build_social_post_chain(api_key: str):
             "Property Details:\n{property_details}\n\n"
             "MLS Description:\n{mls_summary}\n\n"
             "Visual Summary:\n{visual_summary}\n\n"
+            "Listing Headline:\n{headline}\n\n"
             "Platform:\n{platform}\n\n"
             "Slot Name:\n{slot_name}\n\n"
             "Selected Image ID:\n{image_id}\n\n"

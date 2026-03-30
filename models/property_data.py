@@ -163,7 +163,20 @@ class PropertyDetails(BaseModel):
 
 
 class ListingDescriptionOutput(BaseModel):
-    mls_summary: str = Field(description="Professional MLS listing description, about 100-150 words")
+    mls_summary: str = Field(
+        description=(
+            "Professional MLS listing description. Maximum 950 characters including spaces. "
+            "Do not exceed this limit under any circumstances."
+        )
+    )
+    headline: str = Field(
+        description=(
+            "A punchy 8-12 word lifestyle-forward headline for this listing. "
+            "Used in Zillow's What's Special section, email subject lines, and social captions. "
+            "Should capture the single most compelling thing about this property. "
+            "No punctuation at the end. No generic phrases like 'Dream Home' or 'Must See'."
+        )
+    )
 
 
 class SocialPostOutput(BaseModel):

@@ -504,10 +504,28 @@ with tab_generator:
         st.success("✅ Campaign generated successfully!")
         st.divider()
 
+        # Headline
+        if res.get("headline"):
+            st.markdown("### 💡 Listing Headline")
+            st.caption(
+                "Use in Zillow's What's Special section, email subject lines, "
+                "and social captions."
+            )
+            headline_col, copy_col = st.columns([5, 1])
+            with headline_col:
+                st.markdown(f"**{res['headline']}**")
+            with copy_col:
+                st.code(res["headline"], language=None)
+
+        st.divider()
+
         # MLS + CSV
         mls_col, csv_col = st.columns([4, 1])
         with mls_col:
             st.subheader("📋 MLS Description")
+            char_count = len(res["mls_summary"])
+            char_color = "green" if char_count <= 950 else "red"
+            st.caption(f":{char_color}[{char_count} / 950 characters]")
             st.info(res["mls_summary"])
         with csv_col:
             st.markdown("##### Export")

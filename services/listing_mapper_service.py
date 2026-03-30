@@ -23,6 +23,11 @@ DEFAULT_SHOWING_INSTRUCTIONS = (
     "Please remove shoes upon entry."
 )
 
+# Hard character limit for MLS PublicRemarks field
+# Stellar MLS and most Florida boards cap at 1,000 chars
+# We target 950 to leave a safe buffer
+MAX_MLS_REMARKS_CHARS = 950
+
 # Flooring keywords to extract from interior_features into the flooring field
 FLOORING_KEYWORDS: set[str] = {
     "hardwood floors",
@@ -146,6 +151,18 @@ def _derive_heating(heating: str | None) -> str:
     return heating.strip() if heating and heating.strip() else DEFAULT_HEATING
 
 
+def _guard_public_remarks(remarks: str | None) -> str | None:
+    """
+    Truncate public remarks at word boundary if they exceed the MLS
+    character limit. Third safety net after prompt instruction and
+    field description — ensures we never submit an oversized description.
+    """
+    if not remarks or len(remarks) <= MAX_MLS_REMARKS_CHARS:
+        return remarks
+    truncated = remarks[:MAX_MLS_REMARKS_CHARS].rsplit(" ", 1)[0]
+    return truncated + "..."
+
+
 # ---------------------------------------------------------------------------
 # Main mapper
 # ---------------------------------------------------------------------------
@@ -223,7 +240,7 @@ def map_property_to_listing_details(
             community_features=_dedupe(property_details.community_features),
         ),
         remarks=RemarksDetails(
-            public_remarks=public_remarks,
+            public_remarks=_guard_public_remarks(public_remarks),
             showing_instructions=DEFAULT_SHOWING_INSTRUCTIONS,
         ),
         photos=PhotoDetails(
