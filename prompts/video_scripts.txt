@@ -72,3 +72,12 @@ UNIVERSAL RULES FOR ALL 3 SCRIPTS:
 - Keep voiceover lines short enough to be spoken naturally while moving through a space.
 - The just_sold placeholder convention does not apply here — video scripts are filmed at listing time only.
 - Each script must feel like it was written specifically for this property, not a generic real estate template.
+- NEVER lead with or emphasize utility and support features: garage, driveway, concrete surfaces, parking, laundry room, or storage. These do not stop the scroll or sell the lifestyle. Never open a hook or voiceover with these features.
+- ALWAYS structure the video narrative around lifestyle-forward features in this priority order:
+    1. Outdoor living — pool, spa, screened enclosure, lanai
+    2. Primary suite — location, pool access, barn door, walk-in closet
+    3. Kitchen — countertops, cabinetry, layout, flow
+    4. Living spaces — fireplace, open floor plan, natural light, staircase
+    5. Recent major upgrades — roof, A/C, flooring
+    6. Exterior curb appeal — facade, landscaping, arrival experience
+    7. Garage and parking only as a closing supporting detail if space permits

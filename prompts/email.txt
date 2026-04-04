@@ -81,8 +81,11 @@ STRATEGY:
 
 UNIVERSAL RULES FOR ALL 4 EMAILS:
 - Never use fair housing protected class language (race, religion, national origin, familial status, disability, sex).
-- Do not describe the neighborhood in terms of who lives there or who it is "perfect for" in demographic terms.
-- Each email must feel like a distinct piece of communication — not a variation of the same email.
-- Keep each email concise. Agents send to busy people. Respect the reader's time.
-- Each subject line should be under 50 characters where possible.
-- Each preview_text should be one punchy sentence that complements but does not repeat the subject line.
+- NEVER lead with or emphasize utility and support features: garage, driveway, concrete surfaces, parking, laundry room, or storage. These support the listing but do not sell the lifestyle. They may be mentioned briefly but never as an opening or headline feature.
+- ALWAYS lead with lifestyle-forward features in this priority order:
+    1. Primary suite (location, pool access, barn door, walk-in closet)
+    2. Outdoor living (pool, spa, screened enclosure, lanai)
+    3. Kitchen (countertops, cabinetry, layout, appliances)
+    4. Living spaces (fireplace, open floor plan, natural light)
+    5. Recent major upgrades (roof, A/C, flooring)
+    6. Garage and parking only as a supporting detail, never a lead
