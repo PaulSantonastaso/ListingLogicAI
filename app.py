@@ -14,6 +14,7 @@ from services.fusion_service import merge_image_features_into_property
 from services.image_enhancement_service import enhance_listing_photos
 from services.property_normalization_service import normalize_property_details
 from services.image_intelligence_service import build_image_intelligence
+from services.package_builder_service import build_marketing_package_zip
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -502,6 +503,21 @@ with tab_generator:
         enhanced_lookup = build_image_lookup(st.session_state.enhanced_images or [])
 
         st.success("✅ Campaign generated successfully!")
+
+        # --- Download full package ---
+        address = st.session_state.extracted_details.address if st.session_state.extracted_details else None
+        zip_bytes = build_marketing_package_zip(res, address=address, email_tone=email_tone)
+        zip_name = f"{address.replace(' ', '_')[:40]}_listing_package.zip" if address else "listing_package.zip"
+
+        st.download_button(
+            label="⬇ Download Full Marketing Package",
+            data=zip_bytes,
+            file_name=zip_name,
+            mime="application/zip",
+            type="primary",
+            use_container_width=True,
+        )
+
         st.divider()
 
         # Headline
