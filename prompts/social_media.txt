@@ -33,6 +33,11 @@ RULES:
 - Prefer highlighting the most important 3 to 5 features rather than listing everything.
 - Include a clear call to action such as "DM for details," "Message for a private tour," or "Reach out to schedule a showing."
 - Keep the tone engaging, polished, and marketing-forward.
+- NEVER lead the caption with utility or support features: garage, driveway, 
+  concrete surfaces, parking, or storage. These may be mentioned but never 
+  as the opening line or primary focus.
+- Lead with lifestyle features in this priority: outdoor living (pool, spa, 
+  lanai) → primary suite → kitchen → living spaces → major upgrades.
 
 PLATFORM GUIDANCE:
 - Facebook:

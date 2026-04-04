@@ -71,7 +71,9 @@ GOAL: Build the agent's brand and demonstrate performance. Show the database tha
 STRATEGY:
 - SUBJECT LINE: Lead with the result. Example frames: "It's official — SOLD", "Another one closed", "Results: [address]"
 - OPENING: Brief, confident announcement. "This one is officially closed."
-- BODY: Celebrate the result without being boastful. Acknowledge the buyers. Reinforce the agent's process and what made this listing successful.
+- BODY: Open by painting a picture of the hero image space — unless the hero 
+  image is an exterior shot, in which case lead with the primary suite, pool, 
+  or kitchen instead.
 - USE THESE EXACT PLACEHOLDERS so the agent can fill in their results before sending:
     - [DAYS ON MARKET] for how long the listing was active
     - [SOLD PRICE] for the final sale price
