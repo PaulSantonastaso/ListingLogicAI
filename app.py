@@ -16,6 +16,7 @@ from services.image_enhancement_service import enhance_listing_photos
 from services.property_normalization_service import normalize_property_details
 from services.image_intelligence_service import build_image_intelligence
 from services.package_builder_service import build_marketing_package_zip
+from services.image_rename_service import build_renamed_image_set
 
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -547,9 +548,22 @@ if st.session_state.marketing_results:
 
     st.success("✅ Campaign generated successfully!")
 
-    # Download package
+    # Download package — build rename result if images are available
     address = st.session_state.extracted_details.address if st.session_state.extracted_details else None
-    zip_bytes = build_marketing_package_zip(res, address=address, email_tone=email_tone)
+
+    rename_result = None
+    if st.session_state.image_intelligence and st.session_state.original_images:
+        rename_result = build_renamed_image_set(
+            image_intelligence=st.session_state.image_intelligence,
+            original_images=st.session_state.original_images,
+        )
+
+    zip_bytes = build_marketing_package_zip(
+        res,
+        address=address,
+        email_tone=email_tone,
+        rename_result=rename_result,
+    )
     zip_name = f"{address.replace(' ', '_')[:40]}_listing_package.zip" if address else "listing_package.zip"
 
     st.download_button(
