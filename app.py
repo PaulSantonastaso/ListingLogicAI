@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import os
+import time
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -29,6 +30,98 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
+# Rate limiting — in-memory, resets on restart
+# 3 free generations per IP per 24 hours
+# Note: moves to Redis-backed FastAPI middleware in the React rebuild
+# ---------------------------------------------------------------------------
+RATE_LIMIT_MAX = 3
+RATE_LIMIT_WINDOW = 86400  # 24 hours in seconds
+
+if "rate_limit_store" not in st.session_state:
+    st.session_state.rate_limit_store = {}
+
+
+def _get_client_ip() -> str:
+    try:
+        ctx = st.context
+        headers = ctx.headers if hasattr(ctx, "headers") else {}
+        return (
+            headers.get("x-forwarded-for", "").split(",")[0].strip()
+            or headers.get("x-real-ip", "")
+            or "unknown"
+        )
+    except Exception:
+        return "unknown"
+
+
+def check_rate_limit() -> tuple[bool, int]:
+    """Returns (is_allowed, remaining_count). Cleans up expired entries."""
+    ip = _get_client_ip()
+    now = time.time()
+    store = st.session_state.rate_limit_store
+
+    store = {k: v for k, v in store.items() if now - v["window_start"] < RATE_LIMIT_WINDOW}
+    st.session_state.rate_limit_store = store
+
+    if ip not in store:
+        store[ip] = {"count": 0, "window_start": now}
+
+    entry = store[ip]
+    if now - entry["window_start"] >= RATE_LIMIT_WINDOW:
+        entry["count"] = 0
+        entry["window_start"] = now
+
+    remaining = RATE_LIMIT_MAX - entry["count"]
+    return remaining > 0, remaining
+
+
+def increment_rate_limit():
+    ip = _get_client_ip()
+    now = time.time()
+    store = st.session_state.rate_limit_store
+    if ip not in store:
+        store[ip] = {"count": 0, "window_start": now}
+    store[ip]["count"] += 1
+
+
+# ---------------------------------------------------------------------------
+# Generation cache — in-memory, resets on restart
+# Key: SHA256(image_fingerprint + notes_hash)
+# TTL: 24 hours
+# Note: moves to Redis in the React rebuild
+# ---------------------------------------------------------------------------
+CACHE_TTL = 86400
+
+if "generation_cache" not in st.session_state:
+    st.session_state.generation_cache = {}
+
+
+def _build_generation_cache_key(image_fingerprint: str, notes: str) -> str:
+    notes_hash = hashlib.sha256(notes.encode("utf-8")).hexdigest()
+    combined = f"{image_fingerprint}:{notes_hash}"
+    return hashlib.sha256(combined.encode("utf-8")).hexdigest()
+
+
+def get_cached_result(image_fingerprint: str, notes: str) -> dict | None:
+    key = _build_generation_cache_key(image_fingerprint, notes)
+    entry = st.session_state.generation_cache.get(key)
+    if not entry:
+        return None
+    if time.time() - entry["timestamp"] > CACHE_TTL:
+        del st.session_state.generation_cache[key]
+        return None
+    return entry["result"]
+
+
+def set_cached_result(image_fingerprint: str, notes: str, result: dict):
+    key = _build_generation_cache_key(image_fingerprint, notes)
+    st.session_state.generation_cache[key] = {
+        "result": result,
+        "timestamp": time.time(),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Session state bootstrap
 # ---------------------------------------------------------------------------
 _session_defaults = {
@@ -39,6 +132,7 @@ _session_defaults = {
     "original_images": None,
     "enhanced_images": None,
     "image_intelligence": None,
+    "last_notes": "",
 }
 for key, default in _session_defaults.items():
     if key not in st.session_state:
@@ -128,7 +222,6 @@ def render_email_card(label: str, email, key_prefix: str):
 def render_video_script_card(script, enhanced_lookup, key_prefix: str):
     st.markdown(f"**⏱ Target Duration:** {script.duration_seconds} seconds")
     st.divider()
-
     st.markdown("**🎣 Hook**")
     st.caption("Spoken or shown in the first 2-3 seconds.")
     st.info(script.hook)
@@ -136,11 +229,9 @@ def render_video_script_card(script, enhanced_lookup, key_prefix: str):
     if script.shots:
         st.markdown("**🎬 Shot List**")
         st.caption("Film these shots in order.")
-
         for shot in script.shots:
             with st.container():
                 shot_col1, shot_col2 = st.columns([1, 2])
-
                 with shot_col1:
                     image_bytes = enhanced_lookup.get(shot.image_filename or "")
                     if image_bytes:
@@ -154,24 +245,16 @@ def render_video_script_card(script, enhanced_lookup, key_prefix: str):
                             f"📷 {room_label}</div>",
                             unsafe_allow_html=True,
                         )
-
                 with shot_col2:
                     st.markdown(f"**Shot {shot.order}**")
                     if shot.visible_features:
                         st.caption("Features: " + ", ".join(shot.visible_features))
                     st.write(f"🎥 {shot.direction}")
-
                 st.markdown("---")
 
     st.markdown("**🎙 Voiceover Script**")
     st.caption("Read this while filming or record it in post.")
-    st.text_area(
-        "Voiceover",
-        value=script.voiceover,
-        height=200,
-        key=f"{key_prefix}_voiceover",
-    )
-
+    st.text_area("Voiceover", value=script.voiceover, height=200, key=f"{key_prefix}_voiceover")
     st.markdown("**📣 Call to Action**")
     st.success(script.cta)
 
@@ -222,7 +305,6 @@ user_notes = st.text_area(
     height=160,
 )
 
-# Tone inline, no sidebar
 email_tone = st.selectbox(
     "Campaign Tone",
     ["Professional", "Luxury", "Casual", "Urgent"],
@@ -257,10 +339,8 @@ if extract_btn:
                     ):
                         images = [(f.getvalue(), f.name) for f in uploaded_images]
                         st.session_state.original_images = images
-
                         enhanced_images = enhance_listing_photos(images)
                         st.session_state.enhanced_images = enhanced_images
-
                         analyzed_images = asyncio.run(
                             analyze_property_images(enhanced_images, API_KEY)
                         )
@@ -279,6 +359,7 @@ if extract_btn:
 
                 details = normalize_property_details(details)
                 st.session_state.extracted_details = details
+                st.session_state.last_notes = user_notes
                 st.session_state.marketing_results = None
 
             except Exception as e:
@@ -293,7 +374,6 @@ if st.session_state.extracted_details is not None:
     st.caption("Verify before generating. Edits here flow into every asset.")
 
     details = st.session_state.extracted_details
-
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -321,13 +401,12 @@ if st.session_state.extracted_details is not None:
     if details.feature_candidates:
         st.markdown("---")
         st.subheader("🔍 Image-Detected Features")
-        st.caption("Auto-checked above 90% confidence. Review lower-confidence items — you may want to include them.")
+        st.caption("Auto-checked above 90% confidence. Review lower-confidence items.")
 
         selected_features = []
         grouped_candidates = group_feature_candidates(details.feature_candidates)
         rooms = list(grouped_candidates.keys())
 
-        # Render in rows of 4 columns
         for i in range(0, len(rooms), 4):
             cols = st.columns(4)
             for col_idx, room in enumerate(rooms[i:i+4]):
@@ -380,7 +459,7 @@ if st.session_state.extracted_details is not None:
                 if hero:
                     st.write(
                         f"⭐ **{hero.filename}** "
-                        f"({hero.room_type or 'unknown'}) — anchors email and video content"
+                        f"({hero.room_type or 'unknown'}) — anchors email content"
                     )
 
         with intel_col2:
@@ -394,42 +473,68 @@ if st.session_state.extracted_details is not None:
 
     # --- Generate button ---
     st.markdown("---")
-    generate_btn = st.button("Step 2: Generate Marketing Suite", type="primary", use_container_width=True)
 
-    if generate_btn:
-        st.session_state.extracted_details.address = edit_address.strip() or None
-        st.session_state.extracted_details.city = edit_city.strip() or None
-        st.session_state.extracted_details.state = edit_state.strip() or None
-        st.session_state.extracted_details.postal_code = edit_postal_code.strip() or None
-        st.session_state.extracted_details.community_name = edit_community_name.strip() or None
-        st.session_state.extracted_details.subdivision_name = edit_subdivision_name.strip() or None
-        st.session_state.extracted_details.list_price = int(edit_price or 0)
-        st.session_state.extracted_details.bedrooms = int(edit_beds or 0)
-        st.session_state.extracted_details.bathrooms = float(edit_baths or 0.0)
+    is_allowed, remaining = check_rate_limit()
+    if not is_allowed:
+        st.error(
+            "You've reached the free generation limit for today (3 per 24 hours). "
+            "Please come back tomorrow or contact us if you need more."
+        )
+    else:
+        if remaining < RATE_LIMIT_MAX:
+            st.caption(f"Free generations remaining today: {remaining}")
 
-        if isinstance(edit_features, list):
-            st.session_state.extracted_details.key_features = [
-                f.strip() for f in edit_features if f.strip()
-            ]
-        else:
-            st.session_state.extracted_details.key_features = [
-                f.strip() for f in edit_features.split(",") if f.strip()
-            ]
+        generate_btn = st.button(
+            "Step 2: Generate Marketing Suite",
+            type="primary",
+            use_container_width=True,
+        )
 
-        with st.spinner("Generating your full listing campaign..."):
-            try:
-                results = asyncio.run(
-                    generate_marketing_assets_service(
-                        st.session_state.extracted_details,
-                        API_KEY,
-                        email_tone,
-                        image_intelligence=st.session_state.image_intelligence,
-                        photos_count=len(st.session_state.original_images or []),
-                    )
-                )
-                st.session_state.marketing_results = results
-            except Exception as e:
-                st.error(f"Generation error: {e}")
+        if generate_btn:
+            st.session_state.extracted_details.address = edit_address.strip() or None
+            st.session_state.extracted_details.city = edit_city.strip() or None
+            st.session_state.extracted_details.state = edit_state.strip() or None
+            st.session_state.extracted_details.postal_code = edit_postal_code.strip() or None
+            st.session_state.extracted_details.community_name = edit_community_name.strip() or None
+            st.session_state.extracted_details.subdivision_name = edit_subdivision_name.strip() or None
+            st.session_state.extracted_details.list_price = int(edit_price or 0)
+            st.session_state.extracted_details.bedrooms = int(edit_beds or 0)
+            st.session_state.extracted_details.bathrooms = float(edit_baths or 0.0)
+
+            if isinstance(edit_features, list):
+                st.session_state.extracted_details.key_features = [
+                    f.strip() for f in edit_features if f.strip()
+                ]
+            else:
+                st.session_state.extracted_details.key_features = [
+                    f.strip() for f in edit_features.split(",") if f.strip()
+                ]
+
+            # --- Check generation cache ---
+            image_fingerprint = st.session_state.uploaded_image_fingerprint or ""
+            notes = st.session_state.last_notes or user_notes
+            cached = get_cached_result(image_fingerprint, notes)
+
+            if cached:
+                st.session_state.marketing_results = cached
+                st.success("Results loaded instantly from cache.")
+            else:
+                with st.spinner("Generating your full listing campaign..."):
+                    try:
+                        results = asyncio.run(
+                            generate_marketing_assets_service(
+                                st.session_state.extracted_details,
+                                API_KEY,
+                                email_tone,
+                                image_intelligence=st.session_state.image_intelligence,
+                                photos_count=len(st.session_state.original_images or []),
+                            )
+                        )
+                        st.session_state.marketing_results = results
+                        set_cached_result(image_fingerprint, notes, results)
+                        increment_rate_limit()
+                    except Exception as e:
+                        st.error(f"Generation error: {e}")
 
 # ---------------------------------------------------------------------------
 # Step 3 — Results
@@ -470,24 +575,12 @@ if st.session_state.marketing_results:
 
     st.divider()
 
-    # MLS + CSV
-    mls_col, csv_col = st.columns([4, 1])
-    with mls_col:
-        st.subheader("📋 MLS Description")
-        char_count = len(res["mls_summary"])
-        char_color = "green" if char_count <= 950 else "red"
-        st.caption(f":{char_color}[{char_count} / 950 characters]")
-        st.info(res["mls_summary"])
-    with csv_col:
-        st.markdown("##### Export")
-        if "reso_csv" in res:
-            st.download_button(
-                label="⬇ MLS CSV",
-                data=res["reso_csv"],
-                file_name="listing_import.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
+    # MLS Description — no CSV button
+    st.subheader("📋 MLS Description")
+    char_count = len(res["mls_summary"])
+    char_color = "green" if char_count <= 950 else "red"
+    st.caption(f":{char_color}[{char_count} / 950 characters]")
+    st.info(res["mls_summary"])
 
     st.divider()
 
@@ -521,13 +614,10 @@ if st.session_state.marketing_results:
 
     with email_tabs[0]:
         render_email_card("Just Listed", campaign.just_listed, "just_listed")
-
     with email_tabs[1]:
         render_email_card("Open House", campaign.open_house, "open_house")
-
     with email_tabs[2]:
         render_email_card("Why This Home", campaign.why_this_home, "why_this_home")
-
     with email_tabs[3]:
         st.info(
             "✏️ Before sending, replace **[DAYS ON MARKET]** and **[SOLD PRICE]** with your actual results.",
@@ -537,23 +627,17 @@ if st.session_state.marketing_results:
 
     st.divider()
 
-    # Video scripts
+    # Video scripts — only rendered when feature is enabled
     if video_suite:
         st.subheader("🎬 Short Form Video Scripts")
-        st.caption("Three platform-native scripts with shot-by-shot directions. Film with your phone.")
+        st.caption("Three platform-native scripts with shot-by-shot directions.")
 
-        video_tabs = st.tabs([
-            "📱 Instagram Reel",
-            "🎵 TikTok",
-            "▶️ YouTube Short",
-        ])
+        video_tabs = st.tabs(["📱 Instagram Reel", "🎵 TikTok", "▶️ YouTube Short"])
 
         with video_tabs[0]:
             render_video_script_card(video_suite.reel, enhanced_lookup, "reel")
-
         with video_tabs[1]:
             render_video_script_card(video_suite.tiktok, enhanced_lookup, "tiktok")
-
         with video_tabs[2]:
             render_video_script_card(video_suite.youtube_short, enhanced_lookup, "youtube_short")
 
@@ -573,7 +657,7 @@ if st.session_state.marketing_results:
                     render_compliance_badge(review)
                     st.markdown("---")
 
-    # Photo Enhancement Preview — technical review accordion
+    # Photo Enhancement Preview
     if st.session_state.extracted_details and st.session_state.extracted_details.images:
         with st.expander("📷 Photo Enhancement Preview", expanded=False):
             st.caption("Technical review of original vs enhanced images and detected features.")
@@ -597,7 +681,7 @@ if st.session_state.marketing_results:
                     st.caption("Detected: " + ", ".join([f.name for f in img.visible_features]))
                 st.divider()
 
-    # Source of truth
+    # Source of truth — no CSV display
     with st.expander("📊 Final Data Used (Source of Truth)", expanded=False):
         if st.session_state.extracted_details:
             data = st.session_state.extracted_details
@@ -613,7 +697,5 @@ if st.session_state.marketing_results:
                 price_val = data.list_price
                 st.write(f"**Price:** ${price_val:,}" if price_val else "**Price:** N/A")
                 st.write(f"**Features:** {', '.join(data.key_features or [])}")
-            st.markdown("---")
-            st.text(res["reso_csv"])
         else:
             st.write("No data extracted yet.")

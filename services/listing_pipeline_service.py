@@ -16,6 +16,19 @@ from models.image_intelligence import ImageIntelligence
 from services.social_image_planner_service import build_social_image_plan
 from services.video_shot_planner_service import build_video_shot_plan
 
+# ---------------------------------------------------------------------------
+# Feature toggles
+# ---------------------------------------------------------------------------
+# Video scripts — OFF. Infrastructure kept for generative video upsell (v2).
+# Re-enable when integrating Runway/Sora/Pika API.
+ENABLE_VIDEO_SCRIPTS = False
+
+# RESO CSV — OFF. MLS boards too fragmented for a generic RESO export without
+# board-specific validation. Replaced with tap-to-copy field presentation and
+# listing_data_for_mls.txt in the ZIP.
+# Re-enable per validated board (Stellar MLS first) in v2.
+ENABLE_RESO_CSV = False
+
 
 async def extract_property_data_service(raw_notes: str, api_key: str) -> PropertyDetails:
     extraction_chain = build_extraction_chain(api_key)
@@ -33,13 +46,12 @@ async def generate_marketing_assets_service(
     listing_chain = build_listing_description_chain(api_key)
     social_chain = build_social_post_chain(api_key)
     email_chain = build_email_chain(api_key)
-    video_chain = build_video_script_chain(api_key)
     compliance_service = ComplianceService(api_key)
 
     property_details_json = details.model_dump_json(indent=2)
     visual_summary = build_visual_summary(details)
 
-    # --- MLS description runs first — feeds into all downstream chains ---
+    # --- MLS description runs first — feeds all downstream chains ---
     listing_result = await listing_chain.ainvoke({
         "property_details": property_details_json,
         "visual_summary": visual_summary,
@@ -51,10 +63,8 @@ async def generate_marketing_assets_service(
     social_plan = build_social_image_plan(image_intelligence)
     video_shot_plan = build_video_shot_plan(image_intelligence)
 
-    # --- Hero image context for email and video chains ---
+    # --- Hero image context for email ---
     hero_image_context_email = _format_hero_image_context(image_intelligence)
-    hero_image_context_video = _format_hero_image_context_video(image_intelligence)
-    shot_list_str = _format_shot_list(video_shot_plan)
 
     # --- Social tasks ---
     if social_plan:
@@ -102,34 +112,44 @@ async def generate_marketing_assets_service(
         "hero_image_context": hero_image_context_email,
     })
 
-    # --- Video task ---
-    video_task = video_chain.ainvoke({
-        "property_details": property_details_json,
-        "mls_summary": listing_output.mls_summary,
-        "visual_summary": visual_summary,
-        "shot_list": shot_list_str,
-        "hero_image_context": hero_image_context_video,
-    })
+    # --- Video task (toggled) ---
+    if ENABLE_VIDEO_SCRIPTS:
+        video_chain = build_video_script_chain(api_key)
+        hero_image_context_video = _format_hero_image_context_video(image_intelligence)
+        shot_list_str = _format_shot_list(video_shot_plan)
+        video_task = video_chain.ainvoke({
+            "property_details": property_details_json,
+            "mls_summary": listing_output.mls_summary,
+            "visual_summary": visual_summary,
+            "shot_list": shot_list_str,
+            "hero_image_context": hero_image_context_video,
+        })
+        parallel_tasks = [*social_tasks, email_task, video_task]
+    else:
+        parallel_tasks = [*social_tasks, email_task]
 
-    # --- Run social, email, and video in parallel ---
-    results = await asyncio.gather(*social_tasks, email_task, video_task)
+    # --- Run parallel tasks ---
+    results = await asyncio.gather(*parallel_tasks)
 
-    social_posts: list[SocialPostOutput] = [cast(SocialPostOutput, r) for r in results[:-2]]
-    email_output = cast(EmailCampaign, results[-2])
-    video_output = cast(VideoScriptSuite, results[-1])
+    if ENABLE_VIDEO_SCRIPTS:
+        social_posts: list[SocialPostOutput] = [cast(SocialPostOutput, r) for r in results[:-2]]
+        email_output = cast(EmailCampaign, results[-2])
+        video_output: Optional[VideoScriptSuite] = cast(VideoScriptSuite, results[-1])
+    else:
+        social_posts = [cast(SocialPostOutput, r) for r in results[:-1]]
+        email_output = cast(EmailCampaign, results[-1])
+        video_output = None
 
     # --- Build compliance asset map ---
     assets: dict[str, str] = {
         "mls_summary": listing_output.mls_summary,
     }
 
-    # All social posts
     for i, post in enumerate(social_posts):
         platform = (post.platform or "social").lower().replace(" ", "_")
         slot = post.slot_name or f"post_{i + 1}"
         assets[f"social_{platform}_{slot}"] = post.social_media_post
 
-    # All 4 campaign emails — subject + body reviewed independently
     assets["email_just_listed_subject"] = email_output.just_listed.subject
     assets["email_just_listed_body"] = email_output.just_listed.body
     assets["email_open_house_subject"] = email_output.open_house.subject
@@ -139,15 +159,15 @@ async def generate_marketing_assets_service(
     assets["email_just_sold_subject"] = email_output.just_sold.subject
     assets["email_just_sold_body"] = email_output.just_sold.body
 
-    # All 3 video scripts — hook + voiceover reviewed independently
-    assets["video_reel_hook"] = video_output.reel.hook
-    assets["video_reel_voiceover"] = video_output.reel.voiceover
-    assets["video_tiktok_hook"] = video_output.tiktok.hook
-    assets["video_tiktok_voiceover"] = video_output.tiktok.voiceover
-    assets["video_youtube_short_hook"] = video_output.youtube_short.hook
-    assets["video_youtube_short_voiceover"] = video_output.youtube_short.voiceover
+    if ENABLE_VIDEO_SCRIPTS and video_output:
+        assets["video_reel_hook"] = video_output.reel.hook
+        assets["video_reel_voiceover"] = video_output.reel.voiceover
+        assets["video_tiktok_hook"] = video_output.tiktok.hook
+        assets["video_tiktok_voiceover"] = video_output.tiktok.voiceover
+        assets["video_youtube_short_hook"] = video_output.youtube_short.hook
+        assets["video_youtube_short_voiceover"] = video_output.youtube_short.voiceover
 
-    # --- Run all compliance checks in parallel ---
+    # --- Run compliance checks in parallel ---
     compliance_results = await compliance_service.review_assets(assets)
 
     # --- Apply compliant text back to outputs ---
@@ -183,21 +203,22 @@ async def generate_marketing_assets_service(
         ),
     )
 
-    # --- Apply compliant text back to video scripts ---
-    video_output.reel.hook = compliance_results["video_reel_hook"].compliant_text
-    video_output.reel.voiceover = compliance_results["video_reel_voiceover"].compliant_text
-    video_output.tiktok.hook = compliance_results["video_tiktok_hook"].compliant_text
-    video_output.tiktok.voiceover = compliance_results["video_tiktok_voiceover"].compliant_text
-    video_output.youtube_short.hook = compliance_results["video_youtube_short_hook"].compliant_text
-    video_output.youtube_short.voiceover = compliance_results["video_youtube_short_voiceover"].compliant_text
+    if ENABLE_VIDEO_SCRIPTS and video_output:
+        video_output.reel.hook = compliance_results["video_reel_hook"].compliant_text
+        video_output.reel.voiceover = compliance_results["video_reel_voiceover"].compliant_text
+        video_output.tiktok.hook = compliance_results["video_tiktok_hook"].compliant_text
+        video_output.tiktok.voiceover = compliance_results["video_tiktok_voiceover"].compliant_text
+        video_output.youtube_short.hook = compliance_results["video_youtube_short_hook"].compliant_text
+        video_output.youtube_short.voiceover = compliance_results["video_youtube_short_voiceover"].compliant_text
 
+    # --- RESO mapper always runs — listing_details used for other purposes ---
     listing_details = map_property_to_listing_details(
         details,
         public_remarks=final_mls_summary,
         photos_count=photos_count,
     )
 
-    reso_csv = build_reso_csv_string(listing_details)
+    reso_csv = build_reso_csv_string(listing_details) if ENABLE_RESO_CSV else None
 
     return {
         "mls_summary": final_mls_summary,
