@@ -311,14 +311,18 @@ def build_marketing_package_zip(
     res: dict,
     address: str | None = None,
     email_tone: str = "Professional",
+    rename_result=None,
 ) -> bytes:
     """
     Build a complete marketing package ZIP in memory.
 
     Args:
-        res: The marketing results dict from generate_marketing_assets_service
-        address: Property address for the ZIP filename
-        email_tone: The tone used for the email campaign
+        res:           The marketing results dict from generate_marketing_assets_service
+        address:       Property address for the ZIP filename
+        email_tone:    The tone used for the email campaign
+        rename_result: Optional RenameResult from build_renamed_image_set.
+                       When provided, writes photos/curated/ and photos/additional/
+                       subfolders into the ZIP.
 
     Returns:
         ZIP file as bytes, ready for Streamlit download_button
@@ -335,6 +339,7 @@ def build_marketing_package_zip(
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         folder = f"{zip_filename_prefix}listing_package_{timestamp}/"
 
+        # --- Marketing copy files ---
         zf.writestr(folder + "01_headline.txt", _build_headline_file(res))
         zf.writestr(folder + "02_mls_description.txt", _build_mls_description_file(res))
         zf.writestr(folder + "03_listing_data_for_mls.txt", _build_listing_data_file(res))
@@ -345,6 +350,21 @@ def build_marketing_package_zip(
         # Video scripts only included when feature is enabled
         if res.get("video_scripts") is not None:
             zf.writestr(folder + "07_video_scripts.txt", _build_video_scripts_file(res))
+
+        # --- Photos subfolders ---
+        # photos/curated/   — top CURATED_SET_SIZE images, AI-ranked and renamed
+        # photos/additional/ — remaining images outside the curated set
+        if rename_result is not None:
+            for img in rename_result.curated:
+                zf.writestr(
+                    folder + f"photos/curated/{img.renamed_filename}",
+                    img.image_bytes,
+                )
+            for img in rename_result.additional:
+                zf.writestr(
+                    folder + f"photos/additional/{img.renamed_filename}",
+                    img.image_bytes,
+                )
 
     buffer.seek(0)
     return buffer.read()
