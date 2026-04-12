@@ -102,3 +102,13 @@ class PropertyImage(BaseModel):
         ...,
         description="Structured metadata about the uploaded image."
     )
+    caption: Optional[str] = Field(
+        default=None,
+        description=(
+            "AI-generated marketing caption for this image. "
+            "15-25 words, lifestyle-forward, grounded in detected features. "
+            "Populated after image analysis by the caption chain. "
+            "Used in the HITL review UI, React photo strip tooltips, "
+            "and EXIF/IPTC metadata writing."
+        ),
+    )

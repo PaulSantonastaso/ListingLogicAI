@@ -10,7 +10,7 @@ from services.listing_pipeline_service import (
     extract_property_data_service,
     generate_marketing_assets_service,
 )
-from services.image_analysis_service import analyze_property_images
+from services.image_analysis_service import analyze_and_caption_property_images
 from services.fusion_service import merge_image_features_into_property
 from services.image_enhancement_service import enhance_listing_photos
 from services.property_normalization_service import normalize_property_details
@@ -343,7 +343,7 @@ if extract_btn:
                         enhanced_images = enhance_listing_photos(images)
                         st.session_state.enhanced_images = enhanced_images
                         analyzed_images = asyncio.run(
-                            analyze_property_images(enhanced_images, API_KEY)
+                            analyze_and_caption_property_images(enhanced_images, API_KEY)
                         )
                         st.session_state.analyzed_images = analyzed_images
                         st.session_state.uploaded_image_fingerprint = current_fingerprint
