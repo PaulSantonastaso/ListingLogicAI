@@ -28,7 +28,18 @@ OPENING LINE:
 - Examples of strong openings:
     "Modern farmhouse living meets resort-style entertaining in this fully renovated 4-bed retreat."
     "Primary suite on the first floor with private pool access — this layout was designed for how you actually live."
-    "Acacia wood countertops, a screened pool oasis, and a new roof: 8618 Valley Ridge checks every box."
+    "Acacia wood countertops, a screened pool oasis, and a new roof — this one checks every box."
+
+CLOSING LINE:
+- Never end with generic closing phrases: "Experience X living", 
+  "Don't miss this opportunity", "Schedule your showing today", 
+  "This one won't last", "Welcome home", or any variation of these.
+- The closing line should reinforce the single strongest selling point 
+  of the property or create specific urgency tied to the listing itself.
+- Examples of strong closings:
+    "The new roof and A/C mean zero surprises — just move in."
+    "First-floor primary with pool access at this price point won't sit long."
+    "Everything's been done — this one is ready for day one."
 
 FEATURE HIERARCHY — always include these if present in the data, in this order of priority:
 1. Primary suite location and standout features (pool access, barn door, walk-in closet, etc.)

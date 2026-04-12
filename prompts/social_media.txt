@@ -56,7 +56,7 @@ IMAGE CONTEXT GUIDANCE:
 - If the image is a kitchen, focus on layout, cabinetry, counters, gathering space, or flow when supported.
 - If the image is a living space, focus on openness, light, comfort, or entertaining when supported.
 - If the image is a backyard, patio, or outdoor area, focus on relaxing or entertaining outdoors when supported.
-- If the image is a pool, focus on the outdoor oasis, year-round entertaining, and the screened enclosure if present.
+- If the image is a pool, focus on the outdoor oasis, outdoor entertaining, and the screened enclosure if present.
 - If the image is a bedroom or bathroom, focus on comfort, function, or design details when supported.
 - Do not mention details that are not grounded in the provided inputs.
 

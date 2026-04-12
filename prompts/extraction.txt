@@ -19,17 +19,15 @@ Follow these rules carefully:
   The street address only, such as "101 Lake Ave".
   Do not include city, state, or community names.
 
-- city:
-  The official city or municipality name such as "Orlando".
-  Do NOT place neighborhoods, districts, or communities here.
+- city: The official city or municipality name such as "Orlando", 
+  "Atlanta", "Austin", or "Charlotte".
 
-- community_name:
-  A neighborhood, district, or master-planned community name such as
-  "Lake Nona", "SoHo", or "Brickell".
+- community_name: A neighborhood, district, or master-planned community 
+  name such as "Lake Nona", "Buckhead", "South Congress", or "NoDa".
 
-- subdivision_name:
-  A specific subdivision, development section, or condo building such as
-  "Laureate Park", "Baldwin Park", or "The Vue".
+- subdivision_name: A specific subdivision, development section, or condo 
+  building such as "Laureate Park", "Peachtree Hills", "Mueller", 
+  or "The Vue".
 
 IMPORTANT:
 - If the notes mention a community like "Lake Nona" but do not explicitly say "Orlando",

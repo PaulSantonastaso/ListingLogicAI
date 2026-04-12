@@ -41,7 +41,7 @@ SCRIPT 2 — TIKTOK (tiktok)
 DURATION: 30-60 seconds
 TONE: Conversational, story-driven, authentic — like the agent is talking to a friend
 STRATEGY:
-- HOOK: Open with a relatable moment or a curiosity gap. Examples: "I walked into this house and immediately thought of you." / "This is the one everyone's been waiting for in Lake Nona." / "Let me show you something most people miss about this listing."
+- HOOK: Open with a relatable moment or a curiosity gap. Examples: "I walked into this house and immediately thought of you." / "This is the one everyone's been waiting for in [city]." / "Let me show you something most people miss about this listing."
 - SHOTS: 6-8 shots. Slightly slower cuts than Reel. Room to breathe.
 - VOICEOVER: Conversational and specific. Reference actual features by name. Sound like a knowledgeable friend, not a salesperson.
 - CTA: Warm and direct. "Follow for more listings like this." / "Drop a question below and I'll answer it." / "DM me — I'll get you in for a private tour."
@@ -54,7 +54,7 @@ SCRIPT 3 — YOUTUBE SHORT (youtube_short)
 DURATION: 45-60 seconds
 TONE: Informative, lifestyle-forward, slightly more polished than TikTok
 STRATEGY:
-- HOOK: Open with the strongest lifestyle statement about this property or neighborhood. Examples: "This is what $649,000 looks like in Lake Nona right now." / "Solar panels, resort amenities, A-rated schools — let me walk you through it."
+- HOOK: Open with the strongest lifestyle statement about this property or neighborhood. Examples: "This is what $649,000 looks like in [city] right now." / "Solar panels, resort amenities, A-rated schools — let me walk you through it."
 - SHOTS: 8-10 shots. Deliberate pacing. Each shot has time to land.
 - VOICEOVER: Most detailed of the three. Include 2-3 specific property highlights, a neighborhood angle, and a lifestyle moment. Still conversational — not a spec sheet.
 - CTA: Authoritative and clear. "Subscribe for weekly listings." / "Watch until the end and then call me." / "I'll leave the address in the description."
