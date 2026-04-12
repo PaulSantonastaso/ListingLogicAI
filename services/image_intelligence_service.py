@@ -72,7 +72,13 @@ def _rank_images(images: List[PropertyImage]) -> List[RankedImage]:
                 quality_score=img.metadata.quality_score,
                 marketing_worthy=img.metadata.likely_marketing_worthy,
                 visible_features=[f.name for f in img.visible_features],
-                reason=f"Strong {img.metadata.room_type.replace('_',' ')} image with marketing appeal.",
+                reason=(
+                    img.caption
+                    if img.caption
+                    else f"{img.metadata.room_type.replace('_', ' ').title()} — {', '.join(f.name for f in img.visible_features[:2])}"
+                    if img.visible_features
+                    else img.metadata.room_type.replace('_', ' ').title()
+                ),
             )
         )
 
