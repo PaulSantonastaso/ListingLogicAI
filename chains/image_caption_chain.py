@@ -19,8 +19,8 @@ from langchain_core.output_parsers import StrOutputParser
 CAPTION_PROMPT = """You are a real estate marketing copywriter writing a short caption for a single property photo.
 
 PHOTO DETAILS:
-Room type: {room_type}
-Visible features: {visible_features}
+Space context (do not lead with this): {room_type}
+Features visible in the photo: {visible_features}
 Quality score: {quality_score}
 Marketing worthy: {marketing_worthy}
 
@@ -33,13 +33,16 @@ RULES:
 - Never mention the quality score or marketing score in the caption.
 - Write as a statement, not a question. No punctuation at the end.
 - If visible features are empty, write a simple factual caption based on room type only.
+- Never start the caption with the room type as a label 
+  (e.g. do not start with "Kitchen with..." or "Pool with...")
+- Lead with the most compelling feature or the lifestyle moment the space enables
 
 EXAMPLES OF STRONG CAPTIONS:
-- "Screened pool and spa with tiled coping and mature landscaping — your private backyard oasis"
-- "White shaker cabinetry, dark wood countertops, and stainless steel appliances in an open kitchen layout"
-- "First-floor primary suite with barn door entry, tray ceiling, and direct pool access"
-- "Living room with wood plank flooring, fireplace, and sliding glass doors to the pool"
-- "Front exterior with covered entry, large windows, and manicured landscaping"
+- "Screened pool and spa with tiled coping — a private backyard oasis ready for year-round use"
+- "Open kitchen with white shaker cabinetry, dark wood countertops, and stainless steel appliances"
+- "First-floor primary suite — barn door entry, tray ceiling, and direct access to the pool"
+- "Fireplace, wood plank flooring, and sliding glass doors opening to a private screened pool"
+- "Curb appeal with large windows, manicured lawn, and a covered entry that sets the right tone"
 
 Return only the caption text. No labels, no quotes, no extra formatting."""
 
@@ -50,7 +53,7 @@ def build_image_caption_chain(api_key: str):
     Returns a plain string — no structured output needed for a single field.
     """
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash-lite",
+        model="gemini-2.5-flash-lite",
         google_api_key=api_key,
         temperature=0.4,
     )
