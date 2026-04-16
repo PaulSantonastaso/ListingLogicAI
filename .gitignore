@@ -15,3 +15,11 @@ env/
 
 # Streamlit specific
 .streamlit/
+
+# Monorepo
+backend/__pycache__/
+backend/.env
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+EOF
