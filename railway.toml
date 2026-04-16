@@ -1,4 +1,3 @@
-cat > railway.toml << 'EOF'
 [build]
   builder = "nixpacks"
 
@@ -22,4 +21,3 @@ cat > railway.toml << 'EOF'
 
   [services.deploy]
     startCommand = "npm start"
-EOF
