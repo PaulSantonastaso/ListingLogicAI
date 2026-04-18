@@ -672,6 +672,18 @@ async def create_checkout(session_id: str, request: Request):
         session["paid"] = purchase_type
         session["download_token"] = token
         session["download_token_created_at"] = time.time()
+
+        # Send delivery email — same as real payment flow
+        if agent_email:
+            print(f"[EMAIL] Dev checkout — attempting to send to {agent_email}")
+            from services.email_service import send_listing_delivery_email
+            result = await send_listing_delivery_email(
+                to=agent_email,
+                session=session,
+                download_token=token,
+            )
+            print(f"[EMAIL] Send result: {result}")
+
         return {
             "checkoutUrl": f"{FRONTEND_URL}/preview/{session_id}?paid={purchase_type}",
         }
@@ -741,8 +753,7 @@ async def create_checkout(session_id: str, request: Request):
 async def stripe_webhook(request: Request):
     """
     Handles Stripe payment confirmation.
-    Marks session as paid, generates download token.
-    TODO (Item 7.5): Send delivery email via Resend.
+    Marks session as paid, generates download token, sends delivery email.
     """
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -769,7 +780,7 @@ async def stripe_webhook(request: Request):
 
         if session_id and session_id in _sessions:
             s = _sessions[session_id]
-            s["paid"] = purchase_type           # "listing" | "both"
+            s["paid"] = purchase_type
             s["agent_email"] = agent_email
             s["updated_at"] = time.time()
 
@@ -777,12 +788,17 @@ async def stripe_webhook(request: Request):
             s["download_token"] = token
             s["download_token_created_at"] = time.time()
 
-            # TODO (Item 7.5): Send delivery email via Resend
-            # await send_listing_delivery_email(
-            #     to=agent_email,
-            #     session=s,
-            #     download_token=token,
-            # )
+            # Send listing delivery email — fire and forget
+            # Failure is logged but never breaks the payment confirmation
+            if agent_email:
+                from services.email_service import send_listing_delivery_email
+                asyncio.create_task(
+                    send_listing_delivery_email(
+                        to=agent_email,
+                        session=s,
+                        download_token=token,
+                    )
+                )
 
     return {"received": True}
 
@@ -814,6 +830,15 @@ async def mock_payment(session_id: str, request: Request):
     token = _generate_download_token(session_id)
     session["download_token"] = token
     session["download_token_created_at"] = time.time()
+
+    # Send delivery email — same as real payment flow
+    if agent_email:
+        from services.email_service import send_listing_delivery_email
+        result = await send_listing_delivery_email(
+            to=agent_email,
+            session=session,
+            download_token=token,
+        )
 
     return {
         "sessionId": session_id,
