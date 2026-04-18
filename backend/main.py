@@ -148,7 +148,7 @@ def _serialize_property(details) -> Optional[dict]:
         "listPrice": details.list_price or 0,
         "beds": details.bedrooms or 0,
         "baths": details.bathrooms or 0,
-        "sqft": getattr(details, "living_area", 0) or 0,
+        "sqft": getattr(details, "square_footage", 0) or 0,
         "yearBuilt": getattr(details, "year_built", None),
         "lotSize": getattr(details, "lot_size_square_feet", None),
         "garage": str(getattr(details, "garage_spaces", "")) if getattr(details, "garage_spaces", None) else None,
