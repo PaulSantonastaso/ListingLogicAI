@@ -6,7 +6,7 @@ from chains.image_caption_chain import generate_caption_for_image
 from models.property_image import PropertyImage
 
 
-MAX_CONCURRENT_IMAGE_ANALYSIS = 4
+MAX_CONCURRENT_IMAGE_ANALYSIS = 8
 
 
 async def analyze_single_image_async(
