@@ -148,7 +148,7 @@ def _serialize_property(details) -> Optional[dict]:
         "listPrice": details.list_price or 0,
         "beds": details.bedrooms or 0,
         "baths": details.bathrooms or 0,
-        "sqft": getattr(details, "square_footage", 0) or 0,
+        "sqft": getattr(details, "living_area", 0) or 0,
         "yearBuilt": getattr(details, "year_built", None),
         "lotSize": getattr(details, "lot_size_square_feet", None),
         "garage": str(getattr(details, "garage_spaces", "")) if getattr(details, "garage_spaces", None) else None,
@@ -159,15 +159,24 @@ def _serialize_property(details) -> Optional[dict]:
     }
 
 
-def _serialize_images(intelligence, session_id: str) -> list[dict]:
+def _serialize_images(intelligence, session_id: str, rename_result=None) -> list[dict]:
     """
-    Maps ImageIntelligence → frontend ListingImage[] type.
-    Each image gets a url pointing to GET /api/images/:sessionId/:imageId.
+    Maps ImageIntelligence -> frontend ListingImage[] type.
+    rename_result: optional RenameResult — populated after generation.
     """
     if not intelligence or not intelligence.ranked_images:
         return []
 
     base_url = os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:8000")
+
+    # Build lookup: image_id -> renamed_filename
+    rename_lookup: dict[str, str] = {}
+    is_curated_set: set[str] = set()
+    if rename_result:
+        for renamed_img in rename_result.all_images:
+            rename_lookup[renamed_img.image_id] = renamed_img.renamed_filename
+        for renamed_img in rename_result.curated:
+            is_curated_set.add(renamed_img.image_id)
 
     return [
         {
@@ -180,7 +189,8 @@ def _serialize_images(intelligence, session_id: str) -> list[dict]:
             "selectedForSocial": img.image_id in (intelligence.highlight_images or []),
             "caption": img.reason or "",
             "filename": img.filename,
-            "renamedFilename": getattr(img, "renamed_filename", img.filename),
+            "renamedFilename": rename_lookup.get(img.image_id, img.filename),
+            "isCurated": img.image_id in is_curated_set if is_curated_set else idx < 25,
         }
         for idx, img in enumerate(intelligence.ranked_images)
     ]
@@ -315,6 +325,7 @@ def _serialize_session(session: dict) -> dict:
 
     results = session.get("results")
     generated_content = _serialize_generated_content(results) if results else None
+    rename_result = results.get("rename_result") if results else None
 
     return {
         "sessionId": session["session_id"],
@@ -322,7 +333,8 @@ def _serialize_session(session: dict) -> dict:
         "property": _serialize_property(session.get("extracted_details")),
         "images": _serialize_images(
             session.get("image_intelligence"),
-            session["session_id"]
+            session["session_id"],
+            rename_result=rename_result,
         ),
         "detectedFeatures": _serialize_detected_features(
             session.get("analyzed_images")
@@ -698,7 +710,6 @@ async def create_checkout(session_id: str, request: Request):
                 "quantity": 1,
             })
 
-        # Remove customer_email entirely if empty
         checkout_kwargs: dict[str, Any] = {
             "payment_method_types": ["card"],
             "line_items": line_items,

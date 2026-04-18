@@ -1,0 +1,334 @@
+"use client";
+
+import { use, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/layout/Navbar";
+import { PropertyDetailsCard } from "@/components/shared/PropertyDetailsCard";
+import { PurchaseCard } from "@/components/shared/PurchaseCard";
+import { MobileStickyBar } from "@/components/shared/MobileStickyBar";
+import { PhotoGrid } from "@/components/preview/PhotoGrid";
+import {
+  ListingHeader,
+  SkeletonSection,
+} from "@/components/preview/PreviewBlocks";
+import {
+  MlsDescription,
+  SocialLaunchPack,
+  EmailCampaign,
+  CompliancePanel,
+  SuccessBanner,
+} from "@/components/preview/ContentComponents";
+import { useGenerationPolling } from "@/hooks/useGenerationPolling";
+import { createCheckout, getDownloadUrl, ApiError } from "@/lib/api";
+import type { PurchaseOption, Session } from "@/types";
+import { Download, Link as LinkIcon } from "lucide-react";
+
+// ─────────────────────────────────────────────────────────────────
+// Page entry — unwrap async params
+// ─────────────────────────────────────────────────────────────────
+
+export default function PreviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ paid?: string }>;
+}) {
+  const { sessionId } = use(params);
+  const { paid } = use(searchParams);
+  return <PreviewPageContent sessionId={sessionId} paidParam={paid} />;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Content
+// ─────────────────────────────────────────────────────────────────
+
+function PreviewPageContent({
+  sessionId,
+  paidParam,
+}: {
+  sessionId: string;
+  paidParam?: string;
+}) {
+  const router = useRouter();
+  const [activeImageId, setActiveImageId] = useState<string | undefined>();
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [selectedOption, setSelectedOption] = useState<PurchaseOption>("listing");
+
+  const { session, error: pollError } = useGenerationPolling({
+    sessionId,
+    onComplete: (s) => {
+      const hero = s.images.find((img) => img.rank === 1);
+      if (hero) setActiveImageId(hero.id);
+    },
+  });
+
+  const isGenerating = !session || session.status === "generating";
+  const isComplete = session?.status === "complete";
+  const content = session?.generatedContent;
+
+  const paidStatus: "none" | "listing" | "both" =
+    paidParam === "listing" || paidParam === "both"
+      ? paidParam
+      : session?.paid ?? "none";
+
+  const isPurchased = paidStatus !== "none";
+
+  // ── Handlers ─────────────────────────────────────────────────
+
+  const handleCheckout = useCallback(
+    async (option: PurchaseOption, agentEmail: string) => {
+      setCheckoutError(null);
+      try {
+        const origin = window.location.origin;
+        const { checkoutUrl } = await createCheckout(sessionId, {
+          option,
+          agentEmail,
+          successUrl: `${origin}/preview/${sessionId}?paid=${option}`,
+          cancelUrl: `${origin}/preview/${sessionId}`,
+        });
+        window.location.href = checkoutUrl;
+      } catch (err) {
+        setCheckoutError(
+          err instanceof ApiError ? err.message : "Checkout failed. Please try again."
+        );
+        throw err;
+      }
+    },
+    [sessionId]
+  );
+
+  const handleDownload = useCallback(() => {
+    if (!session?.downloadToken) return;
+    window.open(getDownloadUrl(sessionId, session.downloadToken), "_blank");
+  }, [session, sessionId]);
+
+  const property = session?.property;
+
+  // ── Render ────────────────────────────────────────────────────
+
+  return (
+    <div className="flex min-h-screen flex-col bg-background">
+      <Navbar
+        currentStep="preview"
+        showStepLabels
+        backHref={`/review/${sessionId}`}
+        backLabel="Back to review"
+      />
+
+      {/* Success banner — post-purchase */}
+      {isPurchased && session?.agentEmail && (
+        <SuccessBanner
+          agentEmail={session.agentEmail}
+          onDownload={handleDownload}
+        />
+      )}
+
+      {/* ── Photo section — full width, no side padding ── */}
+      <div className="px-6 pt-6 lg:px-8">
+        {property && session.images.length > 0 ? (
+          <PhotoGrid
+            sessionId={sessionId}
+            images={session.images}
+            activeImageId={activeImageId}
+            onSelect={setActiveImageId}
+          />
+        ) : (
+          // Photo skeleton
+          <div className="mb-3">
+            <div className="flex gap-1 overflow-hidden rounded-xl" style={{ height: 320 }}>
+              <div className="shimmer w-1/2 shrink-0" />
+              <div className="grid w-1/2 grid-cols-2 grid-rows-2 gap-1">
+                <div className="shimmer" />
+                <div className="shimmer" />
+                <div className="shimmer" />
+                <div className="shimmer" />
+              </div>
+            </div>
+            {/* Strip skeleton */}
+            <div className="mt-1.5 flex gap-1.5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="shimmer h-16 w-[80px] shrink-0 rounded-md" />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Two-column layout — starts below photo section ── */}
+      <div className="flex flex-1 flex-col lg:grid lg:grid-cols-[1fr_360px]">
+
+        {/* ── Left: all listing content ── */}
+        <div className="px-6 py-4 lg:px-8">
+
+          {/* Address + headline */}
+          {property ? (
+            <ListingHeader
+              property={property}
+              headline={content?.listingHeadline}
+              isPurchased={isPurchased}
+            />
+          ) : (
+            <div className="mb-5 flex flex-col gap-1.5">
+              <div className="shimmer h-5 w-3/4 rounded" />
+              <div className="shimmer h-3 w-1/2 rounded" />
+            </div>
+          )}
+
+          {/* Generated content sections — MLS first */}
+          {isComplete && content ? (
+            <>
+              <MlsDescription content={content} isPurchased={isPurchased} />
+              <PropertyDetailsCard
+                property={property!}
+                mode="readonly"
+                className="mb-4"
+              />
+              <SocialLaunchPack
+                content={content}
+                sessionId={sessionId}
+                images={session.images}
+                isPurchased={isPurchased}
+              />
+              <EmailCampaign content={content} isPurchased={isPurchased} />
+              <CompliancePanel content={content} isPurchased={isPurchased} />
+            </>
+          ) : (
+            <>
+              <SkeletonSection title="MLS Description" lineCount={5} generatingLabel="Writing…" />
+              {property ? (
+                <PropertyDetailsCard
+                  property={property}
+                  mode="readonly"
+                  className="mb-4"
+                />
+              ) : (
+                <SkeletonSection title="Property Details" lineCount={4} />
+              )}
+              <SkeletonSection title="Social Launch Pack" lineCount={3} generatingLabel="Creating…" />
+              <SkeletonSection title="Email Campaign" lineCount={4} generatingLabel="Drafting…" />
+              <SkeletonSection title="Fair Housing Compliance" lineCount={2} generatingLabel="Reviewing…" />
+            </>
+          )}
+
+          {pollError && (
+            <p className="mt-2 text-center text-xs text-destructive">
+              Generation error: {pollError.message}. Try refreshing.
+            </p>
+          )}
+        </div>
+
+        {/* ── Right: purchase card (desktop) ── */}
+        <div className="hidden flex-col gap-4 p-6 lg:flex">
+          {isPurchased ? (
+            <PostPurchasePanel
+              session={session}
+              paidStatus={paidStatus as "listing" | "both"}
+              onDownload={handleDownload}
+              onNewListing={() => router.push("/")}
+            />
+          ) : (
+            <>
+              <PurchaseCard
+                sessionId={sessionId}
+                isGenerating={isGenerating}
+                onCheckout={handleCheckout}
+              />
+              {checkoutError && (
+                <p className="text-center text-[11px] text-destructive">{checkoutError}</p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Mobile sticky bar ── */}
+      {isPurchased ? (
+        <MobileStickyBar variant="download" onDownload={handleDownload} />
+      ) : (
+        <MobileStickyBar
+          variant="checkout"
+          selectedOption={selectedOption}
+          onCheckout={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        />
+      )}
+
+      <div className="h-20 lg:hidden" />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// PostPurchasePanel
+// ─────────────────────────────────────────────────────────────────
+
+function PostPurchasePanel({
+  session,
+  paidStatus,
+  onDownload,
+  onNewListing,
+}: {
+  session: Session | null;
+  paidStatus: "listing" | "both";
+  onDownload: () => void;
+  onNewListing: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="rounded-lg border border-border p-4">
+        <p className="mb-1 text-xs font-semibold text-foreground">Your package is ready</p>
+        <p className="mb-4 text-[11px] leading-relaxed text-muted-foreground">
+          Sent to{" "}
+          <span className="font-medium text-foreground">
+            {session?.agentEmail ?? "your email"}
+          </span>
+          . Download link valid for 7 days.
+        </p>
+        <button
+          onClick={onDownload}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-foreground py-2.5 text-xs font-semibold text-background transition-opacity hover:opacity-90"
+        >
+          <Download className="h-3.5 w-3.5" />
+          Download Package
+        </button>
+        <div className="mt-3 rounded-md border border-border bg-muted/30 p-2.5">
+          <p className="text-[10px] text-muted-foreground">Delivered to</p>
+          <p className="text-xs font-medium text-foreground">
+            {session?.agentEmail ?? "—"}
+          </p>
+        </div>
+      </div>
+
+      {paidStatus === "listing" && (
+        <div className="rounded-lg border border-dashed border-border p-4">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            ✨ Optional add-on
+          </p>
+          <p className="mb-1 text-xs font-semibold text-foreground">
+            Professionally edited photos
+          </p>
+          <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+            Color correction, perspective fix, and twilight sky replacement on eligible exteriors. Delivered to your email.
+          </p>
+          <button
+            onClick={() => { /* TODO: photo upsell checkout */ }}
+            className="flex w-full items-center justify-center gap-2 rounded-md border border-foreground py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+          >
+            <LinkIcon className="h-3.5 w-3.5" />
+            Add Photo Editing — $49
+          </button>
+        </div>
+      )}
+
+      <div className="pt-1 text-center">
+        <p className="mb-2 text-[11px] text-muted-foreground">Have another listing?</p>
+        <button
+          onClick={onNewListing}
+          className="rounded-md border border-border px-5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+        >
+          Start a new listing
+        </button>
+      </div>
+    </div>
+  );
+}
