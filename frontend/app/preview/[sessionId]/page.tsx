@@ -103,6 +103,21 @@ function PreviewPageContent({
     window.open(getDownloadUrl(sessionId, session.downloadToken), "_blank");
   }, [session, sessionId]);
 
+  const handlePhotoUpsell = useCallback(async () => {
+  try {
+    const origin = window.location.origin;
+    const { checkoutUrl } = await createCheckout(sessionId, {
+      option: "photos",
+      agentEmail: session?.agentEmail ?? "",
+      successUrl: `${origin}/preview/${sessionId}?paid=both`,
+      cancelUrl: `${origin}/preview/${sessionId}?paid=listing`,
+    });
+    window.location.href = checkoutUrl;
+  } catch (err) {
+    console.error("Photo upsell checkout failed:", err);
+  }
+}, [sessionId, session]);
+
   const property = session?.property;
 
   // ── Render ────────────────────────────────────────────────────
@@ -226,6 +241,7 @@ function PreviewPageContent({
               paidStatus={paidStatus as "listing" | "both"}
               onDownload={handleDownload}
               onNewListing={() => router.push("/")}
+              onPhotoUpsell={handlePhotoUpsell}
             />
           ) : (
             <>
@@ -267,11 +283,13 @@ function PostPurchasePanel({
   paidStatus,
   onDownload,
   onNewListing,
+  onPhotoUpsell,
 }: {
   session: Session | null;
   paidStatus: "listing" | "both";
   onDownload: () => void;
   onNewListing: () => void;
+  onPhotoUpsell: () => void;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -311,7 +329,7 @@ function PostPurchasePanel({
             Color correction, perspective fix, and twilight sky replacement on eligible exteriors. Delivered to your email.
           </p>
           <button
-            onClick={() => { /* TODO: photo upsell checkout */ }}
+            onClick={onPhotoUpsell}
             className="flex w-full items-center justify-center gap-2 rounded-md border border-foreground py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
           >
             <LinkIcon className="h-3.5 w-3.5" />

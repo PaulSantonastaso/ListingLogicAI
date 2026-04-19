@@ -155,7 +155,7 @@ export interface GenerateResponse {
 }
 
 export interface CheckoutRequest {
-  option: "listing" | "both";
+  option: "listing" | "both" | "photos";
   /** Agent email for delivery confirmation */
   agentEmail: string;
   successUrl: string;
@@ -176,7 +176,7 @@ export interface MockPaymentResponse {
 // ── UI-specific types ─────────────────────────────────────────────
 
 /** Which purchase option the agent has selected in PurchaseCard */
-export type PurchaseOption = "listing" | "both";
+export type PurchaseOption = "listing" | "both" | "photos";
 
 /** Step indicator state */
 export type Step = "upload" | "review" | "preview";
@@ -191,7 +191,7 @@ export const STEP_LABELS: Record<Step, string> = {
 
 /** Pricing constants — single source of truth for the UI */
 export const PRICING = {
-  listing: 24.99,
-  photos:  49.00,   // add-on delta: $73.99 - $24.99
-  both:    73.99,
+  listing: 35.00,
+  photos:  45.00,
+  both:    80.00,
 } as const;
