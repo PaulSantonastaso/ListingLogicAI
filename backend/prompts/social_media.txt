@@ -39,6 +39,14 @@ RULES:
 - Lead with lifestyle features in this priority: outdoor living (pool, spa, 
   lanai) → primary suite → kitchen → living spaces → major upgrades.
 
+COPY STANDARDS:
+- NEVER use: stunning, meticulously, dream home, nestled, boasts, features (as a verb), highlights, showcases, must-see, won't last, rare find, beautiful, perfect
+- NEVER use generic closing phrases: "Experience X living", "Don't miss this opportunity", "Schedule your showing today", "This one won't last", "Welcome home"
+- NEVER end a caption with a lifestyle coda formula: "for your daily routine", "for your morning routine", "for evening relaxation", "perfect for relaxing"
+- Tone: Confident, specific, and lifestyle-forward. Avoid salesy fluff.
+- Hashtags: Always include location-specific tags (city, neighborhood) and property-specific tags (architectural style, key feature). Never use generic tags like #DreamHome, #MustSee, #RareFind, or #WontLast.
+- CTAs must be direct and singular: "DM for details", "Message me to schedule a private tour", or "Comment below to learn more." Never use vague CTAs like "Reach out today" or "Contact me for more information."
+
 PLATFORM GUIDANCE:
 - Facebook:
   - Write a slightly more complete, polished caption.

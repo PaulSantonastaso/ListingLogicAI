@@ -60,6 +60,8 @@ async def _caption_single_image(
     image: PropertyImage,
     api_key: str,
     semaphore: asyncio.Semaphore,
+    room_caption_index: int = 1,
+    room_caption_total: int = 1,
 ) -> PropertyImage:
     """Generate and attach a marketing caption to a single PropertyImage."""
     async with semaphore:
@@ -69,6 +71,8 @@ async def _caption_single_image(
             quality_score=image.metadata.quality_score,
             marketing_worthy=image.metadata.likely_marketing_worthy,
             api_key=api_key,
+            room_caption_index=room_caption_index,
+            room_caption_total=room_caption_total,
         )
         image.caption = caption
         return image
@@ -78,16 +82,27 @@ async def generate_image_captions(
     images: List[PropertyImage],
     api_key: str,
 ) -> List[PropertyImage]:
-    """
-    Generate marketing captions for a list of analyzed PropertyImages.
-    Runs with the same concurrency cap as image analysis.
-    Captions are attached in-place and the list is returned.
-    """
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_IMAGE_ANALYSIS)
-    tasks = [
-        _caption_single_image(image, api_key, semaphore)
-        for image in images
-    ]
+
+    # Count occurrences of each room type to inform caption differentiation
+    from collections import Counter
+    room_type_counts = Counter(img.metadata.room_type for img in images)
+    room_type_seen: Counter = Counter()
+
+    tasks = []
+    for image in images:
+        room_type = image.metadata.room_type
+        room_type_seen[room_type] += 1
+        tasks.append(
+            _caption_single_image(
+                image=image,
+                api_key=api_key,
+                semaphore=semaphore,
+                room_caption_index=room_type_seen[room_type],
+                room_caption_total=room_type_counts[room_type],
+            )
+        )
+
     return await asyncio.gather(*tasks)
 
 
