@@ -140,7 +140,7 @@ function PreviewPageContent({
       )}
 
       {/* ── Photo section — full width, no side padding ── */}
-      <div className="px-6 pt-6 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl px-4 pt-6">
         {property && session.images.length > 0 ? (
           <PhotoGrid
             sessionId={sessionId}
@@ -171,10 +171,11 @@ function PreviewPageContent({
       </div>
 
       {/* ── Two-column layout — starts below photo section ── */}
+      <div className="mx-auto w-full max-w-6xl px-4">
       <div className="flex flex-1 flex-col lg:grid lg:grid-cols-[1fr_360px]">
 
         {/* ── Left: all listing content ── */}
-        <div className="px-6 py-4 lg:px-8">
+        <div className="py-4 pl-2 pr-6">
 
           {/* Address + headline */}
           {property ? (
@@ -234,7 +235,7 @@ function PreviewPageContent({
         </div>
 
         {/* ── Right: purchase card (desktop) ── */}
-        <div className="hidden flex-col gap-4 p-6 lg:flex">
+        <div className="hidden flex-col gap-4 px-4 py-6 lg:flex">
           {isPurchased ? (
             <PostPurchasePanel
               session={session}
@@ -257,6 +258,8 @@ function PreviewPageContent({
           )}
         </div>
       </div>
+
+      </div>{/* end max-w container */}
 
       {/* ── Mobile sticky bar ── */}
       {isPurchased ? (

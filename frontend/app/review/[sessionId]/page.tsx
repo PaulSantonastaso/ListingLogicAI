@@ -129,21 +129,24 @@ function ReviewPageContent({ sessionId }: { sessionId: string }) {
       <Navbar currentStep="review" showStepLabels backHref="/" backLabel="Start over" />
 
       {/* Page header */}
-      <div className="border-b border-border px-8 py-6">
-        <p className="section-label mb-1">Step 2 of 3</p>
-        <h1 className="mb-1 text-base font-semibold text-foreground">
-          Does this look right?
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          Fix anything below — tap any field to edit inline. When you&apos;re ready, generate your campaign.
-        </p>
+      <div className="border-b border-border py-6">
+        <div className="mx-auto max-w-6xl px-2">
+          <p className="section-label mb-1">Step 2 of 3</p>
+          <h1 className="mb-1 text-base font-semibold text-foreground">
+            Does this look right?
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Fix anything below — tap any field to edit inline. When you&apos;re ready, generate your campaign.
+          </p>
+        </div>
       </div>
 
       {/* Two-column layout */}
+      <div className="mx-auto w-full max-w-6xl px-2">
       <div className="flex flex-1 flex-col md:grid md:grid-cols-[1fr_280px]">
 
         {/* ── Left: editable data ── */}
-        <div className="border-r border-border px-8 py-6">
+        <div className="border-r border-border py-6 pl-2 pr-6">
           <div className="flex flex-col gap-5">
             <PropertyDetailsCard
               property={property}
@@ -218,6 +221,8 @@ function ReviewPageContent({ sessionId }: { sessionId: string }) {
           </p>
         </div>
       </div>
+
+      </div>{/* end max-w container */}
 
       {/* Mobile sticky bar */}
       <MobileStickyBar

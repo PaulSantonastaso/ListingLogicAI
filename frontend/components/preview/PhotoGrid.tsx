@@ -38,7 +38,7 @@ export function PhotoGrid({
   return (
     <div className={cn("mb-3", className)}>
       {/* Main grid — hero left, 2×2 right */}
-      <div className="flex gap-1 overflow-hidden rounded-xl" style={{ height: 320 }}>
+      <div className="flex gap-1 overflow-hidden rounded-xl h-[220px] md:h-[360px]">
 
         {/* Hero — 50% width, full height */}
         <div

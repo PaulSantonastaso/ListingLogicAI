@@ -21,8 +21,8 @@ const FACT_KEYS: Array<{
   format?: (v: unknown) => string;
 }> = [
   { label: "Year Built",     key: "yearBuilt" },
-  { label: "Lot Size",       key: "lotSize" },
-  { label: "Garage",         key: "garage" },
+  { label: "Lot Size",       key: "lotSize",      format: (v) => v != null ? `${Number(v).toLocaleString()} sqft` : "—" },
+  { label: "Garage",         key: "garage",       format: (v) => v != null ? `${v} car` : "—" },
   { label: "Property Type",  key: "propertyType" },
   { label: "MLS #",          key: "mlsNumber" },
 ];
@@ -169,9 +169,9 @@ export function PropertyDetailsCard({
 
       {/* Facts grid */}
       <div className="grid grid-cols-2 border-b border-border">
-        {FACT_KEYS.map(({ label, key }) => {
+        {FACT_KEYS.map(({ label, key, format }) => {
           const rawValue = property[key];
-          const displayValue = rawValue != null ? String(rawValue) : "—";
+          const displayValue = format ? (rawValue != null ? format(rawValue) : "—") : (rawValue != null ? String(rawValue) : "—");
           const isEditingThis = editingKey === key;
 
           return (

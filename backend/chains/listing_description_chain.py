@@ -8,7 +8,7 @@ def build_listing_description_chain(api_key: str):
     system_prompt = load_prompt_text("mls_writer.txt")
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
+        model="gemini-3-flash-preview",
         google_api_key=api_key,
         temperature=0.7,
     )
@@ -20,7 +20,8 @@ def build_listing_description_chain(api_key: str):
         ("user", (
             "Generate an MLS description using the following inputs.\n\n"
             "Property Details:\n{property_details}\n\n"
-            "Visual Summary:\n{visual_summary}"
+            "Visual Summary:\n{visual_summary}\n\n"
+            "Neighborhood Context:\n{neighborhood_context}"
         ))
     ])
 

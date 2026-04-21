@@ -64,8 +64,8 @@ export interface PropertyDetails {
   baths: number;
   sqft: number;
   yearBuilt?: number;
-  lotSize?: string;
-  garage?: string;
+  lotSize?: number;
+  garage?: number;
   propertyType?: string;
   mlsNumber?: string;
   /** Agent-editable key features shown as chips */

@@ -64,7 +64,7 @@ def build_video_script_chain(api_key: str):
     system_prompt = load_prompt_text("video_scripts.txt")
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
+        model="gemini-3-flash-preview",
         google_api_key=api_key,
         temperature=0.75,
     )

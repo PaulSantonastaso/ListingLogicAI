@@ -8,7 +8,7 @@ def build_extraction_chain(api_key: str):
     system_prompt = load_prompt_text("extraction.txt")
 
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
+        model="gemini-3.1-flash-lite-preview",
         google_api_key=api_key,
         temperature=0.2,
     )

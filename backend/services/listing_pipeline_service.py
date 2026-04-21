@@ -15,6 +15,8 @@ from services.reso_csv_service import build_reso_csv_string
 from models.image_intelligence import ImageIntelligence
 from services.social_image_planner_service import build_social_image_plan
 from services.video_shot_planner_service import build_video_shot_plan
+from services.neighborhood_service import build_neighborhood_context
+from chains.neighborhood_chain import generate_neighborhood_copy
 
 # ---------------------------------------------------------------------------
 # Feature toggles
@@ -42,6 +44,7 @@ async def generate_marketing_assets_service(
     email_tone: str = "Professional",
     image_intelligence: Optional[ImageIntelligence] = None,
     photos_count: Optional[int] = None,
+    google_places_api_key: Optional[str] = None,
 ):
     listing_chain = build_listing_description_chain(api_key)
     social_chain = build_social_post_chain(api_key)
@@ -51,10 +54,40 @@ async def generate_marketing_assets_service(
     property_details_json = details.model_dump_json(indent=2)
     visual_summary = build_visual_summary(details)
 
+    # --- Neighborhood enrichment — runs before MLS chain ---
+    # Graceful fallback if address missing, geocoding fails, or no places found
+    neighborhood_context = None
+    neighborhood_guide = ""
+    neighborhood_mls_insert = ""
+
+    if google_places_api_key and details.address:
+        full_address = ", ".join(filter(None, [
+            details.address,
+            details.city,
+            details.state,
+            details.postal_code,
+        ]))
+        neighborhood_context = await build_neighborhood_context(
+            address=full_address,
+            api_key=google_places_api_key,
+        )
+        if neighborhood_context:
+            neighborhood_copy = await generate_neighborhood_copy(
+                address=full_address,
+                places_formatted=neighborhood_context.format_for_prompt(),
+                api_key=api_key,
+            )
+            if neighborhood_copy:
+                neighborhood_mls_insert = neighborhood_copy.mls_insert or ""
+                neighborhood_guide = neighborhood_copy.neighborhood_guide or ""
+                print(f"[NEIGHBORHOOD] MLS insert: {neighborhood_mls_insert}")
+                print(f"[NEIGHBORHOOD] Guide: {neighborhood_guide}")
+
     # --- MLS description runs first — feeds all downstream chains ---
     listing_result = await listing_chain.ainvoke({
         "property_details": property_details_json,
         "visual_summary": visual_summary,
+        "neighborhood_context": neighborhood_mls_insert,
     })
     listing_output = cast(ListingDescriptionOutput, listing_result)
     headline = listing_output.headline
@@ -231,4 +264,5 @@ async def generate_marketing_assets_service(
         "compliance_results": list(compliance_results.values()),
         "listing_details": listing_details,
         "reso_csv": reso_csv,
+        "neighborhood_guide": neighborhood_guide,
     }

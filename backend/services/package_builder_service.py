@@ -306,6 +306,14 @@ def _build_compliance_audit_file(res: dict) -> str:
 
     return "\n".join(lines)
 
+def _build_neighborhood_insight_file(res: dict) -> str:
+    lines = [_format_header("NEIGHBORHOOD INSIGHT")]
+    lines.append(
+        "AI-generated neighborhood guide based on live local data.\n"
+        "Review before sharing — verify place names are current.\n"
+    )
+    lines.append(res.get("neighborhood_guide", ""))
+    return "\n".join(lines)
 
 def build_marketing_package_zip(
     res: dict,
@@ -350,6 +358,9 @@ def build_marketing_package_zip(
         # Video scripts only included when feature is enabled
         if res.get("video_scripts") is not None:
             zf.writestr(folder + "07_video_scripts.txt", _build_video_scripts_file(res))
+
+        if res.get("neighborhood_guide"):
+            zf.writestr(folder + "08_neighborhood_insight.txt", _build_neighborhood_insight_file(res))
 
         # --- Photos subfolders ---
         # photos/curated/   — top CURATED_SET_SIZE images, AI-ranked and renamed

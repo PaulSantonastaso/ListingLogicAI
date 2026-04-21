@@ -41,6 +41,7 @@ STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -150,8 +151,8 @@ def _serialize_property(details) -> Optional[dict]:
         "baths": details.bathrooms or 0,
         "sqft": getattr(details, "square_footage", 0) or 0,
         "yearBuilt": getattr(details, "year_built", None),
-        "lotSize": getattr(details, "lot_size_square_feet", None),
-        "garage": str(getattr(details, "garage_spaces", "")) if getattr(details, "garage_spaces", None) else None,
+        "lotSize": getattr(details, "lot_size_sqft", None),
+        "garage": getattr(details, "garage_spaces", None),
         "propertyType": getattr(details, "property_type", None),
         "communityName": getattr(details, "community_name", None),
         "subdivisionName": getattr(details, "subdivision_name", None),
@@ -512,6 +513,7 @@ async def _run_generation(session_id: str, email_tone: str):
             email_tone,
             image_intelligence=session.get("image_intelligence"),
             photos_count=len(session.get("original_images") or []),
+            google_places_api_key=GOOGLE_PLACES_API_KEY,
         )
 
         if session.get("image_intelligence") and session.get("original_images"):
