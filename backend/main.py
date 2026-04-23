@@ -90,6 +90,9 @@ def _create_session() -> dict:
         "agent_email": None,
         "download_token": None,
         "download_token_created_at": None,
+        "enhancement_status": "none",
+        "photo_download_url": None,
+        "autoenhance_order_id": None,
     }
     _sessions[session_id] = session
     return session
@@ -367,6 +370,7 @@ async def extract(
     notes: str = Form(...),
     images: list[UploadFile] = File(default=[]),
 ):
+    print(f"[EXTRACT] Request received - {len(images)} images, notes length: {len(notes)}")
     """
     Step 1 — Extract property details from agent notes and analyze images.
     Creates a new session. Returns sessionId + extracted data.
@@ -397,17 +401,26 @@ async def extract(
                 image_data.append((image_bytes, upload.filename or "image.jpg"))
 
             session["original_images"] = image_data
+            print(f"[EXTRACT] Images read - {len(image_data)} files")
 
             enhanced = enhance_listing_photos(image_data)
             session["enhanced_images"] = enhanced
+            print(f"[EXTRACT] Enhancement complete - {len(enhanced)} files")
 
-            analyzed = await analyze_and_caption_property_images(enhanced, API_KEY)
-            session["analyzed_images"] = analyzed
+            try:
+                analyzed = await analyze_and_caption_property_images(enhanced, API_KEY)
+                session["analyzed_images"] = analyzed
+                print(f"[EXTRACT] Analysis complete - {len(analyzed)} images")
+            except Exception as e:
+                print(f"[EXTRACT] Analysis failed: {e}")
+                raise
 
             intelligence = build_image_intelligence(analyzed)
             session["image_intelligence"] = intelligence
+            print(f"[EXTRACT] Intelligence built")
 
             details = merge_image_features_into_property(details, analyzed)
+            print(f"[EXTRACT] Features merged")
 
         details = normalize_property_details(details)
         session["extracted_details"] = details
@@ -542,8 +555,21 @@ async def get_session(session_id: str):
     """
     Returns full session state matching frontend Session type.
     Polled every 2 seconds by useGenerationPolling hook.
+    Falls back to R2 rehydration for paid sessions after in-memory expiry.
     """
-    session = _get_session(session_id)
+    # Try in-memory first
+    session = _sessions.get(session_id)
+
+    # Fall back to R2 for paid sessions
+    if not session:
+        from services.r2_service import load_session_json
+        session = load_session_json(session_id)
+        if session:
+            # Rehydrate into memory as read-only
+            _sessions[session_id] = session
+        else:
+            raise HTTPException(status_code=404, detail="Session not found or expired.")
+
     return _serialize_session(session)
 
 
@@ -596,6 +622,26 @@ async def get_image(session_id: str, image_id: str):
         media_type = "image/jpeg"
 
     return Response(content=image_bytes, media_type=media_type)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/images/enhanced/{session_id}/{filename}
+# ---------------------------------------------------------------------------
+
+@app.get("/api/images/enhanced/{session_id}/{filename}")
+async def get_enhanced_image(session_id: str, filename: str):
+    """
+    Serves enhanced images from R2 for the preview grid.
+    Only available after Autoenhance processing completes.
+    """
+    from services.r2_service import get_enhanced_image as r2_get_enhanced_image
+    image_bytes = r2_get_enhanced_image(session_id, filename)
+    if not image_bytes:
+        raise HTTPException(status_code=404, detail="Enhanced image not found.")
+
+    import mimetypes
+    mime_type, _ = mimetypes.guess_type(filename)
+    return Response(content=image_bytes, media_type=mime_type or "image/jpeg")
 
 
 # ---------------------------------------------------------------------------
@@ -791,6 +837,112 @@ async def stripe_webhook(request: Request):
                         download_token=token,
                     )
                 )
+
+           # Persist session JSON and original images to R2
+            from services.r2_service import save_session_json, save_original_images
+            asyncio.create_task(asyncio.to_thread(save_session_json, session_id, s))
+            original_images = s.get("original_images") or []
+            if original_images:
+                asyncio.create_task(
+                    asyncio.to_thread(save_original_images, session_id, original_images)
+                )
+
+            # Trigger photo enhancement if photos were purchased
+            if purchase_type in ("photos", "both"):
+                from services.photo_enhancement_service import trigger_photo_enhancement
+                asyncio.create_task(
+                    trigger_photo_enhancement(session_id=session_id, session=s)
+                )
+
+    return {"received": True}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/webhook/autoenhance
+# ---------------------------------------------------------------------------
+
+@app.post("/api/webhook/autoenhance")
+async def autoenhance_webhook(request: Request):
+    """
+    Receives per-image processing callbacks from Autoenhance.ai.
+    When the full order is complete (order_is_processing=False),
+    downloads enhanced images, uploads ZIP to R2, sends delivery email.
+    """
+    payload = await request.json()
+
+    event = payload.get("event")
+    order_id = payload.get("order_id")
+    order_is_processing = payload.get("order_is_processing", True)
+    has_error = payload.get("error", False)
+
+    print(f"[AUTOENHANCE] Webhook received — order={order_id} processing={order_is_processing} error={has_error}")
+
+    # Only act when the full order is complete
+    if order_is_processing:
+        return {"received": True}
+
+    # Find the session tied to this order
+    session = None
+    session_id: str | None = None
+    for sid, s in _sessions.items():
+        if s.get("autoenhance_order_id") == order_id:
+            session = s
+            session_id = sid
+            break
+
+    if not session or not session_id:
+        print(f"[AUTOENHANCE] No session found for order_id={order_id}")
+        return {"received": True}
+
+    agent_email = session.get("agent_email")
+    if not agent_email:
+        print(f"[AUTOENHANCE] No agent email on session {session_id} — skipping delivery")
+        return {"received": True}
+
+    try:
+        from services.photo_enhancement_service import download_enhanced_photos
+        from services.r2_service import upload_photos_zip
+        from services.email_service import send_photos_delivery_email
+
+        # Download all enhanced images from Autoenhance
+        enhanced_images = await download_enhanced_photos(order_id=order_id)
+        if not enhanced_images:
+            print(f"[AUTOENHANCE] No enhanced images returned for order={order_id}")
+            return {"received": True}
+
+        # Build ZIP and upload to R2
+        photo_download_url = await upload_photos_zip(
+            session_id=session_id,
+            images=enhanced_images,
+        )
+
+        # Send delivery email
+        asyncio.create_task(
+            send_photos_delivery_email(
+                to=agent_email,
+                session=session,
+                photo_download_url=photo_download_url,
+                photo_count=len(enhanced_images),
+            )
+        )
+
+        session["enhancement_status"] = "complete"
+        session["photo_download_url"] = photo_download_url
+        session["updated_at"] = time.time()
+
+        # Save enhanced images to R2 for preview grid display
+        from services.r2_service import save_enhanced_images, save_session_json
+        asyncio.create_task(
+            asyncio.to_thread(save_enhanced_images, session_id, enhanced_images)
+        )
+        # Re-save session JSON with updated enhancement status and photo URL
+        asyncio.create_task(asyncio.to_thread(save_session_json, session_id, session))
+
+        print(f"[AUTOENHANCE] Order {order_id} complete — {len(enhanced_images)} photos delivered to {agent_email}")
+
+    except Exception as e:
+        print(f"[AUTOENHANCE] Error processing completed order {order_id}: {e}")
+        session["enhancement_status"] = "error"
 
     return {"received": True}
 
