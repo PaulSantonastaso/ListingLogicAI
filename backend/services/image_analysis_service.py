@@ -6,7 +6,7 @@ from chains.image_caption_chain import generate_caption_for_image
 from models.property_image import PropertyImage
 
 
-MAX_CONCURRENT_IMAGE_ANALYSIS = 8
+MAX_CONCURRENT_IMAGE_ANALYSIS = 12
 
 
 async def analyze_single_image_async(
@@ -17,15 +17,11 @@ async def analyze_single_image_async(
     image_id=None,
 ):
     async with semaphore:
-        loop = asyncio.get_running_loop()
-
-        return await loop.run_in_executor(
-            None,
-            extract_property_image,
-            image_bytes,
-            filename,
-            api_key,
-            image_id,
+        return await extract_property_image(
+            image_bytes=image_bytes,
+            filename=filename,
+            api_key=api_key,
+            image_id=image_id,
         )
 
 

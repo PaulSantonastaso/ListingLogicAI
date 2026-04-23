@@ -24,18 +24,11 @@ def build_listing_delivery_subject(address: str | None) -> str:
 def build_listing_delivery_html(
     address: str | None,
     headline: str | None,
-    mls_description: str | None,
-    mls_char_count: int | None,
-    just_listed_subject: str | None,
-    just_listed_preview: str | None,
     download_url: str,
+    preview_url: str,
 ) -> str:
     address_str = address or "your listing"
     headline_str = headline or ""
-    mls_str = (mls_description or "").replace("\n", "<br>")
-    char_count_str = f"{mls_char_count} / 950 characters" if mls_char_count else ""
-    just_listed_subject_str = just_listed_subject or ""
-    just_listed_preview_str = just_listed_preview or ""
 
     return f"""<!DOCTYPE html>
 <html>
@@ -50,7 +43,7 @@ def build_listing_delivery_html(
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
 
-          <!-- Logo / Brand -->
+          <!-- Brand -->
           <tr>
             <td style="padding-bottom:32px;">
               <span style="font-size:15px;font-weight:700;color:#1a1a1a;letter-spacing:-0.3px;">
@@ -61,7 +54,7 @@ def build_listing_delivery_html(
 
           <!-- Headline card -->
           <tr>
-            <td style="background:#1a1a1a;border-radius:12px;padding:28px 32px;margin-bottom:16px;">
+            <td style="background:#1a1a1a;border-radius:12px;padding:28px 32px;">
               <p style="margin:0 0 6px 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.5);">
                 Listing Headline
               </p>
@@ -74,70 +67,26 @@ def build_listing_delivery_html(
           <!-- Spacer -->
           <tr><td style="height:16px;"></td></tr>
 
-          <!-- MLS Description -->
-          <tr>
-            <td style="background:#ffffff;border-radius:12px;padding:28px 32px;">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td>
-                    <p style="margin:0 0 4px 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#8a8a8a;">
-                      MLS Description
-                    </p>
-                  </td>
-                  <td align="right">
-                    <p style="margin:0;font-size:11px;color:#2d6a4f;">
-                      ✓ {char_count_str}
-                    </p>
-                  </td>
-                </tr>
-                <tr>
-                  <td colspan="2" style="padding-top:12px;">
-                    <p style="margin:0;font-size:13px;line-height:1.7;color:#1a1a1a;">
-                      {mls_str}
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Spacer -->
-          <tr><td style="height:16px;"></td></tr>
-
-          <!-- Just Listed email preview -->
-          <tr>
-            <td style="background:#ffffff;border-radius:12px;padding:28px 32px;">
-              <p style="margin:0 0 12px 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#8a8a8a;">
-                Just Listed Email
-              </p>
-              <p style="margin:0 0 4px 0;font-size:13px;font-weight:600;color:#1a1a1a;">
-                {just_listed_subject_str}
-              </p>
-              <p style="margin:0;font-size:12px;color:#8a8a8a;font-style:italic;">
-                {just_listed_preview_str}
-              </p>
-            </td>
-          </tr>
-
-          <!-- Spacer -->
-          <tr><td style="height:24px;"></td></tr>
-
-          <!-- Download CTA -->
+          <!-- CTA card -->
           <tr>
             <td style="background:#ffffff;border-radius:12px;padding:28px 32px;text-align:center;">
               <p style="margin:0 0 6px 0;font-size:14px;font-weight:600;color:#1a1a1a;">
-                Your full package is ready to download
+                Your listing package for {address_str} is ready
               </p>
               <p style="margin:0 0 20px 0;font-size:12px;color:#8a8a8a;">
-                Includes MLS data sheet, social posts, email campaign,<br>
-                compliance audit, and curated + renamed photos.
+                MLS description, social posts, email campaign, and compliance audit — all ready to use.
               </p>
-              <a href="{download_url}"
+              <a href="{preview_url}"
                  style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:14px 32px;border-radius:8px;">
+                View Your Listing Package →
+              </a>
+              <p style="margin:20px 0 12px 0;font-size:11px;color:#b4b2a9;">or</p>
+              <a href="{download_url}"
+                 style="display:inline-block;color:#1a1a1a;text-decoration:none;font-size:12px;font-weight:600;padding:10px 24px;border-radius:8px;border:1px solid #e0ddd8;">
                 ⬇ Download Package
               </a>
               <p style="margin:16px 0 0 0;font-size:11px;color:#b4b2a9;">
-                Link valid for 7 days · You can download multiple times
+                Link valid for 7 days · You can return anytime
               </p>
             </td>
           </tr>
@@ -165,51 +114,28 @@ def build_listing_delivery_html(
 def build_listing_delivery_text(
     address: str | None,
     headline: str | None,
-    mls_description: str | None,
-    mls_char_count: int | None,
-    just_listed_subject: str | None,
     download_url: str,
+    preview_url: str,
 ) -> str:
-    """Plain text fallback for email clients that don't render HTML."""
     address_str = address or "your listing"
     lines = [
         f"Your listing package for {address_str} is ready",
         "=" * 60,
         "",
     ]
-
     if headline:
-        lines += [
-            "LISTING HEADLINE",
-            headline,
-            "",
-        ]
-
-    if mls_description:
-        char_str = f" ({mls_char_count} / 950 characters)" if mls_char_count else ""
-        lines += [
-            f"MLS DESCRIPTION{char_str}",
-            "-" * 40,
-            mls_description,
-            "",
-        ]
-
-    if just_listed_subject:
-        lines += [
-            "JUST LISTED EMAIL SUBJECT",
-            just_listed_subject,
-            "",
-        ]
-
+        lines += [headline, ""]
     lines += [
-        "DOWNLOAD YOUR FULL PACKAGE",
+        "VIEW YOUR LISTING PACKAGE",
         "-" * 40,
+        preview_url,
+        "",
+        "Or download directly:",
         download_url,
         "",
-        "Link valid for 7 days. You can download multiple times.",
+        "Link valid for 7 days. You can return anytime.",
         "",
         "—",
         "ListingLogicAI · AI-powered listing marketing",
     ]
-
     return "\n".join(lines)

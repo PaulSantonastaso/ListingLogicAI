@@ -135,34 +135,26 @@ async def send_listing_delivery_email(
     address = details.address if details else None
 
     headline = results.get("headline")
-    mls_summary = results.get("mls_summary", "")
-    mls_char_count = len(mls_summary) if mls_summary else 0
 
     # Just Listed email subject + preview
     campaign = results.get("email_campaign")
-    just_listed_subject = None
-    just_listed_preview = None
-    if campaign and hasattr(campaign, "just_listed"):
-        just_listed_subject = campaign.just_listed.subject
-        just_listed_preview = campaign.just_listed.preview_text
+
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    paid_status = session.get("paid", "listing")
+    preview_url = f"{frontend_url}/preview/{session_id}?paid={paid_status}"
 
     subject = build_listing_delivery_subject(address)
     html = build_listing_delivery_html(
         address=address,
         headline=headline,
-        mls_description=mls_summary,
-        mls_char_count=mls_char_count,
-        just_listed_subject=just_listed_subject,
-        just_listed_preview=just_listed_preview,
         download_url=download_url,
+        preview_url=preview_url,
     )
     text = build_listing_delivery_text(
         address=address,
         headline=headline,
-        mls_description=mls_summary,
-        mls_char_count=mls_char_count,
-        just_listed_subject=just_listed_subject,
         download_url=download_url,
+        preview_url=preview_url,
     )
 
     return await _send_email(to=to, subject=subject, html=html, text=text)
@@ -171,7 +163,7 @@ async def send_listing_delivery_email(
 async def send_photos_delivery_email(
     to: str,
     session: dict,
-    photo_download_token: str,
+    photo_download_url: str,
     photo_count: int,
 ) -> bool:
     """
@@ -191,9 +183,9 @@ async def send_photos_delivery_email(
         logger.warning("send_photos_delivery_email called with no recipient — skipping")
         return False
 
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
     session_id = session.get("session_id", "")
-    download_url = f"{frontend_url}/api/download-photos/{session_id}/{photo_download_token}"
+    download_url = photo_download_url
 
     details = session.get("extracted_details")
     address = details.address if details else None

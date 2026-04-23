@@ -80,7 +80,7 @@ def build_image_extraction_model(api_key: str, model_name: str = "gemini-2.5-fla
     )
 
 
-def extract_property_image(
+async def extract_property_image(
     image_bytes: bytes,
     filename: str,
     api_key: str,
@@ -121,7 +121,7 @@ Return a PropertyImage object for this single uploaded property photo.
         ]
     )
 
-    raw_result = structured_llm.invoke([message])
+    raw_result = await structured_llm.ainvoke([message])
     result = PropertyImage.model_validate(raw_result)
 
     for feature in result.visible_features:
