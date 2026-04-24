@@ -21,4 +21,4 @@
     buildCommand = "npm install && npm run build"
 
   [services.deploy]
-    startCommand = "npm start"
+    startCommand = "next start -p $PORT"
