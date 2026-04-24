@@ -5,17 +5,13 @@ Handles Autoenhance.ai API integration for real estate photo editing.
 
 Flow:
   1. trigger_photo_enhancement() — called from Stripe webhook
-     Uploads images to Autoenhance, creates an order, stores order_id on session
+     Uploads images to Autoenhance, stores image_ids on session
   2. download_enhanced_photos() — called from Autoenhance webhook
-     Downloads all enhanced images from a completed order
+     Downloads all enhanced images using stored image_ids
 
 Enhancement settings per image:
-  - Exterior with sky_visible: sky replacement + vertical correction
-  - Exterior without sky:      vertical correction only
-  - Interior:                  window pull + vertical correction
-
-All other enhancements (color correction, exposure, white balance)
-are handled automatically by Autoenhance's AI.
+  - Exterior (front/back): sky replacement + vertical correction
+  - Interior: window pull + vertical correction
 
 Environment variables required:
   AUTOENHANCE_API_KEY — from Autoenhance dashboard
@@ -23,7 +19,6 @@ Environment variables required:
 
 import logging
 import os
-from io import BytesIO
 
 import httpx
 
@@ -35,28 +30,25 @@ AUTOENHANCE_API_KEY = os.getenv("AUTOENHANCE_API_KEY", "")
 
 def _headers() -> dict:
     return {
-        "Authorization": f"Bearer {AUTOENHANCE_API_KEY}",
+        "x-api-key": AUTOENHANCE_API_KEY,
         "Content-Type": "application/json",
         "x-api-version": "2025-05-05",
     }
 
 
-def _enhancement_settings(room_type: str, sky_visible: bool) -> dict:
+def _enhancement_settings(room_type: str) -> dict:
     """
-    Returns per-image enhancement settings based on room type and sky visibility.
-    Autoenhance handles all other corrections automatically.
+    Returns per-image enhancement settings based on room type.
+    sky_visible is not available on ImageMetadata — routing based on room_type only.
+    Autoenhance handles color correction, exposure, and white balance automatically.
     """
-    is_exterior = room_type.upper() in ("FRONT_EXTERIOR", "BACK_EXTERIOR", "EXTERIOR")
+    is_exterior = room_type.upper() in (
+        "FRONT_EXTERIOR", "BACK_EXTERIOR", "EXTERIOR"
+    )
 
-    if is_exterior and sky_visible:
+    if is_exterior:
         return {
             "sky_replacement": True,
-            "vertical_correction": True,
-            "window_pull_type": "NONE",
-        }
-    elif is_exterior:
-        return {
-            "sky_replacement": False,
             "vertical_correction": True,
             "window_pull_type": "NONE",
         }
@@ -70,15 +62,15 @@ def _enhancement_settings(room_type: str, sky_visible: bool) -> dict:
 
 async def trigger_photo_enhancement(session_id: str, session: dict) -> None:
     """
-    Uploads all session images to Autoenhance and creates an order.
-    Stores the order_id on the session for webhook lookup.
-    Called as a fire-and-forget task from the Stripe webhook.
+    Uploads all session images to Autoenhance.
+    Stores list of image_ids on session for webhook download lookup.
+    Called as fire-and-forget from Stripe webhook.
     """
     if not AUTOENHANCE_API_KEY:
         logger.warning("[AUTOENHANCE] No API key set — skipping photo enhancement")
         return
 
-    enhanced_images = session.get("enhanced_images") or []
+    enhanced_images = session.get("original_images") or []
     analyzed_images = session.get("analyzed_images") or []
 
     # Fall back to R2 if images not in memory (upsell after session expiry)
@@ -98,114 +90,122 @@ async def trigger_photo_enhancement(session_id: str, session: dict) -> None:
         for img in listing_details.all_images:
             rename_lookup[img.image_id] = img.renamed_filename
 
+    uploaded_image_ids: list[str] = []
+
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
 
-            # Step 1 — Create order
+            # Step 1 — Create order to group all images
             order_resp = await client.post(
                 f"{AUTOENHANCE_BASE_URL}/orders",
                 headers=_headers(),
                 json={"name": session_id},
             )
             order_resp.raise_for_status()
-            order_id = order_resp.json()["id"]
+            order_id = order_resp.json()["order_id"]
             session["autoenhance_order_id"] = order_id
             logger.info(f"[AUTOENHANCE] Created order {order_id} for session {session_id}")
 
-            # Step 2 — Upload each image with per-image settings
             for i, (image_bytes, filename) in enumerate(enhanced_images):
-                # Derive our internal image ID — matches analyze_single_image_async
                 our_image_id = f"img_{i+1:03}"
 
-                # Match analyzed image for room_type and sky_visible
+                # Get room type from analyzed images
                 analyzed = analyzed_images[i] if i < len(analyzed_images) else None
-                room_type = analyzed.metadata.room_type if analyzed else "INTERIOR"
-                sky_visible = analyzed.metadata.sky_visible if analyzed else False
+                room_type = analyzed.metadata.room_type if analyzed else "other"
 
-                settings = _enhancement_settings(room_type, sky_visible)
+                settings = _enhancement_settings(room_type)
 
-                # Use renamed filename for SEO value — fall back to original filename
+                # Use renamed filename for SEO value
                 renamed = rename_lookup.get(our_image_id, filename)
 
-                # Create image record on Autoenhance
+                # Step 2 — Register image with Autoenhance under the order
                 create_resp = await client.post(
-                    f"{AUTOENHANCE_BASE_URL}/images",
+                    f"{AUTOENHANCE_BASE_URL}/images/",
                     headers=_headers(),
                     json={
+                        "image_name": renamed,
                         "order_id": order_id,
-                        "filename": renamed,
                         **settings,
                     },
                 )
                 create_resp.raise_for_status()
                 image_data = create_resp.json()
-                s3_url = image_data["s3PutObjectUrl"]
-                ae_image_id = image_data["id"]
 
-                # Upload raw bytes to S3 presigned URL
+                ae_image_id = image_data["image_id"]
+                # Support both old and new API versions
+                upload_url = image_data.get("upload_url") or image_data.get("s3PutObjectUrl")
+
+                if not upload_url:
+                    logger.warning(f"[AUTOENHANCE] No upload URL for image {renamed}")
+                    continue
+
+                # Step 2 — Upload image bytes
+                # Content-Type must match what Autoenhance signed the URL with
+                import mimetypes
+                mime_type, _ = mimetypes.guess_type(renamed)
+                content_type = mime_type or "image/jpeg"
                 upload_resp = await client.put(
-                    s3_url,
+                    upload_url,
                     content=image_bytes,
-                    headers={"Content-Type": "application/octet-stream"},
+                    headers={"Content-Type": content_type},
                 )
                 upload_resp.raise_for_status()
-                logger.info(f"[AUTOENHANCE] Uploaded {ae_image_id} as {renamed}")
 
-            # Step 3 — Process order
-            process_resp = await client.post(
-                f"{AUTOENHANCE_BASE_URL}/orders/{order_id}/process",
-                headers=_headers(),
-            )
-            process_resp.raise_for_status()
-            logger.info(f"[AUTOENHANCE] Order {order_id} submitted for processing")
+                uploaded_image_ids.append(ae_image_id)
+                logger.info(f"[AUTOENHANCE] Uploaded {renamed} as {ae_image_id}")
+
+        # Store image IDs on session for webhook download
+        session["autoenhance_image_ids"] = uploaded_image_ids
+        session["enhancement_status"] = "processing"
+        logger.info(
+            f"[AUTOENHANCE] {len(uploaded_image_ids)} images uploaded for session {session_id}"
+        )
 
     except Exception as e:
-        logger.error(f"[AUTOENHANCE] trigger_photo_enhancement failed for session {session_id}: {e}")
+        logger.error(
+            f"[AUTOENHANCE] trigger_photo_enhancement failed for session {session_id}: {e}"
+        )
         session["enhancement_status"] = "error"
 
 
-async def download_enhanced_photos(order_id: str) -> list[tuple[bytes, str]]:
+async def download_enhanced_photos(session: dict) -> list[tuple[bytes, str]]:
     """
-    Downloads all enhanced images from a completed Autoenhance order.
-    Returns a list of (image_bytes, filename) tuples.
+    Downloads all enhanced images using image_ids stored on the session.
+    Returns a list of (image_bytes, image_name) tuples.
+    Called from the Autoenhance webhook when order_is_processing=False.
     """
-    results = []
+    image_ids: list[str] = session.get("autoenhance_image_ids") or []
+    if not image_ids:
+        logger.warning("[AUTOENHANCE] No image IDs on session — cannot download")
+        return []
+
+    results: list[tuple[bytes, str]] = []
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-
-            # Get all images in the order
-            images_resp = await client.get(
-                f"{AUTOENHANCE_BASE_URL}/images",
-                headers=_headers(),
-                params={"order_id": order_id},
-            )
-            images_resp.raise_for_status()
-            images = images_resp.json().get("images", [])
-
-            for image in images:
-                image_id = image["id"]
-                filename = image.get("filename", f"{image_id}.jpg")
-
-                # Get enhanced download URL
+            for image_id in image_ids:
+                # Download enhanced image bytes directly
                 download_resp = await client.get(
                     f"{AUTOENHANCE_BASE_URL}/images/{image_id}/enhanced",
                     headers=_headers(),
+                    params={"preview": False},
                 )
                 download_resp.raise_for_status()
-                download_url = download_resp.json().get("url")
 
-                if not download_url:
-                    logger.warning(f"[AUTOENHANCE] No download URL for image {image_id}")
-                    continue
+                # Response is image bytes, not JSON
+                image_bytes = download_resp.content
 
-                # Download the enhanced image bytes
-                img_resp = await client.get(download_url)
-                img_resp.raise_for_status()
-                results.append((img_resp.content, filename))
-                logger.info(f"[AUTOENHANCE] Downloaded enhanced image {filename}")
+                # Get filename from content-disposition or fall back to image_id
+                content_disposition = download_resp.headers.get("content-disposition", "")
+                if "filename=" in content_disposition:
+                    filename = content_disposition.split("filename=")[-1].strip('"')
+                else:
+                    filename = f"{image_id}.jpg"
+
+                results.append((image_bytes, filename))
+                logger.info(f"[AUTOENHANCE] Downloaded enhanced image {image_id}")
 
     except Exception as e:
-        logger.error(f"[AUTOENHANCE] download_enhanced_photos failed for order {order_id}: {e}")
+        logger.error(f"[AUTOENHANCE] download_enhanced_photos failed: {e}")
 
     return results
