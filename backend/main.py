@@ -93,6 +93,7 @@ def _create_session() -> dict:
         "enhancement_status": "none",
         "photo_download_url": None,
         "autoenhance_order_id": None,
+        "autoenhance_image_ids": [],
     }
     _sessions[session_id] = session
     return session
@@ -905,7 +906,7 @@ async def autoenhance_webhook(request: Request):
         from services.email_service import send_photos_delivery_email
 
         # Download all enhanced images from Autoenhance
-        enhanced_images = await download_enhanced_photos(order_id=order_id)
+        enhanced_images = await download_enhanced_photos(session=session)
         if not enhanced_images:
             print(f"[AUTOENHANCE] No enhanced images returned for order={order_id}")
             return {"received": True}
