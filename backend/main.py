@@ -6,8 +6,9 @@ Wraps the existing LangChain pipeline services behind a REST API.
 
 All response shapes match the TypeScript types in frontend/types/index.ts.
 
-Session storage is in-memory for beta — moves to Redis post-launch.
-Sessions expire after 24 hours.
+Session storage uses Redis (pickle serialization, 24h TTL).
+Sessions are keyed as session:{session_id}.
+Autoenhance order→session reverse lookup keyed as autoenhance:{order_id}.
 
 Endpoints:
     GET  /health
@@ -18,6 +19,7 @@ Endpoints:
     GET  /api/download/{session_id}/{token}
     POST /api/checkout/{session_id}
     POST /api/webhook/stripe
+    POST /api/webhook/autoenhance
     POST /api/mock-payment/{session_id}
 """
 
@@ -25,10 +27,12 @@ import asyncio
 import hashlib
 import hmac
 import os
+import pickle
 import time
 import uuid
 from typing import Any, Optional
 
+import redis
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,12 +66,40 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# In-memory session store
+# Redis session store
 # ---------------------------------------------------------------------------
 
 SESSION_TTL = 86400          # 24 hours
 DOWNLOAD_TOKEN_TTL = 604800  # 7 days
-_sessions: dict[str, dict] = {}
+AUTOENHANCE_KEY_TTL = 604800 # 7 days — matches download token window
+
+_redis_client: redis.Redis = redis.Redis.from_url(
+    os.getenv("REDIS_URL", "redis://localhost:6379"),
+    decode_responses=False,
+)
+
+
+def _session_key(session_id: str) -> str:
+    return f"session:{session_id}"
+
+
+def _autoenhance_key(order_id: str) -> str:
+    return f"autoenhance:{order_id}"
+
+
+def _read_session(session_id: str) -> Optional[dict]:
+    raw: bytes | None = _redis_client.get(_session_key(session_id))  # type: ignore[assignment]
+    if not raw:
+        return None
+    return pickle.loads(raw)
+
+
+def _write_session(session: dict, ttl: int = SESSION_TTL) -> None:
+    _redis_client.setex(
+        _session_key(session["session_id"]),
+        ttl,
+        pickle.dumps(session),
+    )
 
 
 def _create_session() -> dict:
@@ -95,17 +127,14 @@ def _create_session() -> dict:
         "autoenhance_order_id": None,
         "autoenhance_image_ids": [],
     }
-    _sessions[session_id] = session
+    _write_session(session)
     return session
 
 
 def _get_session(session_id: str) -> dict:
-    session = _sessions.get(session_id)
+    session = _read_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found or expired.")
-    if time.time() - session["created_at"] > SESSION_TTL:
-        del _sessions[session_id]
-        raise HTTPException(status_code=404, detail="Session expired.")
     return session
 
 
@@ -116,7 +145,7 @@ def _generate_download_token(session_id: str) -> str:
 
 
 def _validate_download_token(session_id: str, token: str) -> bool:
-    session = _sessions.get(session_id)
+    session = _read_session(session_id)
     if not session:
         return False
     if not session.get("download_token"):
@@ -427,9 +456,10 @@ async def extract(
         session["extracted_details"] = details
         session["generation_status"] = "extracted"
         session["updated_at"] = time.time()
+        _write_session(session)
 
     except Exception as e:
-        del _sessions[session_id]
+        _redis_client.delete(_session_key(session_id))
         raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
     return {
@@ -505,6 +535,7 @@ async def generate(session_id: str, request: Request):
 
     session["generation_status"] = "generating"
     session["updated_at"] = time.time()
+    _write_session(session)
 
     asyncio.create_task(_run_generation(session_id, email_tone))
 
@@ -516,7 +547,7 @@ async def _run_generation(session_id: str, email_tone: str):
     from services.listing_pipeline_service import generate_marketing_assets_service
     from services.image_rename_service import build_renamed_image_set
 
-    session = _sessions.get(session_id)
+    session = _read_session(session_id)
     if not session:
         return
 
@@ -540,11 +571,13 @@ async def _run_generation(session_id: str, email_tone: str):
         session["results"] = results
         session["generation_status"] = "complete"
         session["updated_at"] = time.time()
+        _write_session(session)
 
     except Exception as e:
         session["generation_status"] = "error"
         session["generation_error"] = str(e)
         session["updated_at"] = time.time()
+        _write_session(session)
 
 
 # ---------------------------------------------------------------------------
@@ -556,18 +589,17 @@ async def get_session(session_id: str):
     """
     Returns full session state matching frontend Session type.
     Polled every 2 seconds by useGenerationPolling hook.
-    Falls back to R2 rehydration for paid sessions after in-memory expiry.
+    Falls back to R2 rehydration for paid sessions after Redis expiry.
     """
-    # Try in-memory first
-    session = _sessions.get(session_id)
+    session = _read_session(session_id)
 
-    # Fall back to R2 for paid sessions
+    # Fall back to R2 for paid sessions (e.g. 7-day preview link after TTL)
     if not session:
         from services.r2_service import load_session_json
         session = load_session_json(session_id)
         if session:
-            # Rehydrate into memory as read-only
-            _sessions[session_id] = session
+            # Rehydrate into Redis with full download token TTL
+            _write_session(session, ttl=DOWNLOAD_TOKEN_TTL)
         else:
             raise HTTPException(status_code=404, detail="Session not found or expired.")
 
@@ -714,6 +746,7 @@ async def create_checkout(session_id: str, request: Request):
     # Store email now — available immediately on redirect
     session["agent_email"] = agent_email
     session["updated_at"] = time.time()
+    _write_session(session)
 
     if not STRIPE_SECRET_KEY:
         # Dev mode — simulate checkout without Stripe
@@ -721,6 +754,7 @@ async def create_checkout(session_id: str, request: Request):
         session["paid"] = purchase_type
         session["download_token"] = token
         session["download_token_created_at"] = time.time()
+        _write_session(session)
 
         # Send delivery email — same as real payment flow
         if agent_email:
@@ -817,43 +851,44 @@ async def stripe_webhook(request: Request):
         customer_details = stripe_session["customer_details"] if "customer_details" in stripe_session else {}
         agent_email = customer_details["email"] if "email" in customer_details else None
 
-        if session_id and session_id in _sessions:
-            s = _sessions[session_id]
-            s["paid"] = purchase_type
-            s["agent_email"] = agent_email
-            s["updated_at"] = time.time()
+        if session_id:
+            s = _read_session(session_id)
+            if s:
+                s["paid"] = purchase_type
+                s["agent_email"] = agent_email
+                s["updated_at"] = time.time()
 
-            token = _generate_download_token(session_id)
-            s["download_token"] = token
-            s["download_token_created_at"] = time.time()
+                token = _generate_download_token(session_id)
+                s["download_token"] = token
+                s["download_token_created_at"] = time.time()
+                _write_session(s)
 
-            # Send listing delivery email — fire and forget
-            # Failure is logged but never breaks the payment confirmation
-            if agent_email:
-                from services.email_service import send_listing_delivery_email
-                asyncio.create_task(
-                    send_listing_delivery_email(
-                        to=agent_email,
-                        session=s,
-                        download_token=token,
+                # Send listing delivery email — fire and forget
+                if agent_email:
+                    from services.email_service import send_listing_delivery_email
+                    asyncio.create_task(
+                        send_listing_delivery_email(
+                            to=agent_email,
+                            session=s,
+                            download_token=token,
+                        )
                     )
-                )
 
-           # Persist session JSON and original images to R2
-            from services.r2_service import save_session_json, save_original_images
-            asyncio.create_task(asyncio.to_thread(save_session_json, session_id, s))
-            original_images = s.get("original_images") or []
-            if original_images:
-                asyncio.create_task(
-                    asyncio.to_thread(save_original_images, session_id, original_images)
-                )
+                # Persist session JSON and original images to R2
+                from services.r2_service import save_session_json, save_original_images
+                asyncio.create_task(asyncio.to_thread(save_session_json, session_id, s))
+                original_images = s.get("original_images") or []
+                if original_images:
+                    asyncio.create_task(
+                        asyncio.to_thread(save_original_images, session_id, original_images)
+                    )
 
-            # Trigger photo enhancement if photos were purchased
-            if purchase_type in ("photos", "both"):
-                from services.photo_enhancement_service import trigger_photo_enhancement
-                asyncio.create_task(
-                    trigger_photo_enhancement(session_id=session_id, session=s)
-                )
+                # Trigger photo enhancement if photos were purchased
+                if purchase_type in ("photos", "both"):
+                    from services.photo_enhancement_service import trigger_photo_enhancement
+                    asyncio.create_task(
+                        trigger_photo_enhancement(session_id=session_id, session=s, redis_client=_redis_client)
+                    )
 
     return {"received": True}
 
@@ -868,6 +903,9 @@ async def autoenhance_webhook(request: Request):
     Receives per-image processing callbacks from Autoenhance.ai.
     When the full order is complete (order_is_processing=False),
     downloads enhanced images, uploads ZIP to R2, sends delivery email.
+
+    Session lookup uses the autoenhance:{order_id} reverse-lookup key in Redis
+    (written by trigger_photo_enhancement), avoiding a full keyspace scan.
     """
     payload = await request.json()
 
@@ -882,17 +920,17 @@ async def autoenhance_webhook(request: Request):
     if order_is_processing:
         return {"received": True}
 
-    # Find the session tied to this order
-    session = None
-    session_id: str | None = None
-    for sid, s in _sessions.items():
-        if s.get("autoenhance_order_id") == order_id:
-            session = s
-            session_id = sid
-            break
-
-    if not session or not session_id:
+    # O(1) session lookup via reverse-lookup key
+    session_id_bytes: bytes | None = _redis_client.get(_autoenhance_key(order_id))  # type: ignore[assignment]
+    if not session_id_bytes:
         print(f"[AUTOENHANCE] No session found for order_id={order_id}")
+        return {"received": True}
+
+    session_id = session_id_bytes.decode()
+    session = _read_session(session_id)
+
+    if not session:
+        print(f"[AUTOENHANCE] Session {session_id} expired or missing for order={order_id}")
         return {"received": True}
 
     agent_email = session.get("agent_email")
@@ -930,6 +968,7 @@ async def autoenhance_webhook(request: Request):
         session["enhancement_status"] = "complete"
         session["photo_download_url"] = photo_download_url
         session["updated_at"] = time.time()
+        _write_session(session)
 
         # Save enhanced images to R2 for preview grid display
         from services.r2_service import save_enhanced_images, save_session_json
@@ -944,6 +983,7 @@ async def autoenhance_webhook(request: Request):
     except Exception as e:
         print(f"[AUTOENHANCE] Error processing completed order {order_id}: {e}")
         session["enhancement_status"] = "error"
+        _write_session(session)
 
     return {"received": True}
 
@@ -975,6 +1015,7 @@ async def mock_payment(session_id: str, request: Request):
     token = _generate_download_token(session_id)
     session["download_token"] = token
     session["download_token_created_at"] = time.time()
+    _write_session(session)
 
     # Send delivery email — same as real payment flow
     if agent_email:

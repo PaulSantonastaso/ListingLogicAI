@@ -219,6 +219,7 @@ export function Composer({ className }: ComposerProps) {
             <button
               type="button"
               onClick={toggleListening}
+              style={{ display: "none" }}
               disabled={!isSupported || isLoading}
               title={
                 !isSupported
