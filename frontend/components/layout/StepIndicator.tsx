@@ -49,7 +49,7 @@ export function StepIndicator({
         <div className="flex items-center gap-0">
           {STEP_ORDER.map((step, index) => {
             const isDone = index < currentIndex;
-            const isActive = index === currentStep;
+            const isActive = index === currentIndex;
             const isLast = index === STEP_ORDER.length - 1;
 
             return (
