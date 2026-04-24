@@ -40,12 +40,32 @@ from fastapi.responses import Response
 
 load_dotenv()
 
+def _resize_images(
+    uploaded_images: list[tuple[bytes, str]],
+    max_dim: int = 2048,
+) -> list[tuple[bytes, str]]:
+    """Resize images to max_dim on longest side. Fast Pillow-only, no OpenCV."""
+    from PIL import Image, ImageOps
+    import io
+
+    resized = []
+    for image_bytes, filename in uploaded_images:
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        img = ImageOps.exif_transpose(img)
+        img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=92)
+        resized.append((buf.getvalue(), filename))
+    return resized
+
 API_KEY = os.getenv("GEMINI_API_KEY", "")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
+
+
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -411,7 +431,6 @@ async def extract(
     from services.listing_pipeline_service import extract_property_data_service
     from services.image_analysis_service import analyze_and_caption_property_images
     from services.fusion_service import merge_image_features_into_property
-    from services.image_enhancement_service import enhance_listing_photos
     from services.property_normalization_service import normalize_property_details
     from services.image_intelligence_service import build_image_intelligence
 
@@ -433,9 +452,9 @@ async def extract(
             session["original_images"] = image_data
             print(f"[EXTRACT] Images read - {len(image_data)} files")
 
-            enhanced = enhance_listing_photos(image_data)
+            enhanced = await asyncio.to_thread(_resize_images, image_data)
             session["enhanced_images"] = enhanced
-            print(f"[EXTRACT] Enhancement complete - {len(enhanced)} files")
+            print(f"[EXTRACT] Resize complete - {len(enhanced)} files")
 
             try:
                 analyzed = await analyze_and_caption_property_images(enhanced, API_KEY)

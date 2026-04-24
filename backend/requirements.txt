@@ -26,7 +26,6 @@ langchain-google-genai==4.2.1
 langsmith==0.7.22
 MarkupSafe==3.0.3
 numpy==2.4.3
-opencv-python-headless==4.10.0.84
 orjson==3.11.7
 ormsgpack==1.12.2
 packaging==26.0
