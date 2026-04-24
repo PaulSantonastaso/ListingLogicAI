@@ -19,13 +19,19 @@ Environment variables required:
 
 import logging
 import os
+from typing import TYPE_CHECKING
 
 import httpx
+
+if TYPE_CHECKING:
+    import redis as redis_module
 
 logger = logging.getLogger(__name__)
 
 AUTOENHANCE_BASE_URL = "https://api.autoenhance.ai/v3"
 AUTOENHANCE_API_KEY = os.getenv("AUTOENHANCE_API_KEY", "")
+
+AUTOENHANCE_KEY_TTL = 604800  # 7 days
 
 
 def _headers() -> dict:
@@ -60,11 +66,20 @@ def _enhancement_settings(room_type: str) -> dict:
         }
 
 
-async def trigger_photo_enhancement(session_id: str, session: dict) -> None:
+async def trigger_photo_enhancement(
+    session_id: str,
+    session: dict,
+    redis_client: "redis_module.Redis | None" = None,
+) -> None:
     """
     Uploads all session images to Autoenhance.
     Stores list of image_ids on session for webhook download lookup.
     Called as fire-and-forget from Stripe webhook.
+
+    redis_client: passed from main.py so the service stays Redis-unaware
+    at import time. When provided, writes the autoenhance:{order_id} →
+    session_id reverse-lookup key immediately after the order is created,
+    enabling O(1) session lookup in the Autoenhance webhook handler.
     """
     if not AUTOENHANCE_API_KEY:
         logger.warning("[AUTOENHANCE] No API key set — skipping photo enhancement")
@@ -106,6 +121,15 @@ async def trigger_photo_enhancement(session_id: str, session: dict) -> None:
             session["autoenhance_order_id"] = order_id
             logger.info(f"[AUTOENHANCE] Created order {order_id} for session {session_id}")
 
+            # Write reverse-lookup key immediately — webhook needs this to find the session
+            if redis_client and order_id:
+                redis_client.setex(
+                    f"autoenhance:{order_id}",
+                    AUTOENHANCE_KEY_TTL,
+                    session_id.encode(),
+                )
+                logger.info(f"[AUTOENHANCE] Reverse-lookup key written for order {order_id}")
+
             for i, (image_bytes, filename) in enumerate(enhanced_images):
                 our_image_id = f"img_{i+1:03}"
 
@@ -139,7 +163,7 @@ async def trigger_photo_enhancement(session_id: str, session: dict) -> None:
                     logger.warning(f"[AUTOENHANCE] No upload URL for image {renamed}")
                     continue
 
-                # Step 2 — Upload image bytes
+                # Step 3 — Upload image bytes
                 # Content-Type must match what Autoenhance signed the URL with
                 import mimetypes
                 mime_type, _ = mimetypes.guess_type(renamed)
