@@ -85,6 +85,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"[REQUEST] {request.method} {request.url.path} — content-length: {request.headers.get('content-length', 'unknown')}")
+    response = await call_next(request)
+    print(f"[RESPONSE] {request.url.path} — status: {response.status_code}")
+    return response
+
+@app.get("/api/ping")
+async def ping():
+    print("[PING] hit")
+    return {"pong": True}
+
+
 # ---------------------------------------------------------------------------
 # Redis session store
 # ---------------------------------------------------------------------------
