@@ -428,11 +428,6 @@ async def extract(
     Frontend ExtractResponse shape:
     { sessionId, status, property, images, detectedFeatures }
     """
-    from services.listing_pipeline_service import extract_property_data_service
-    from services.image_analysis_service import analyze_and_caption_property_images
-    from services.fusion_service import merge_image_features_into_property
-    from services.property_normalization_service import normalize_property_details
-    from services.image_intelligence_service import build_image_intelligence
 
     if not notes.strip():
         raise HTTPException(status_code=422, detail="Agent notes are required.")
@@ -440,57 +435,22 @@ async def extract(
     session = _create_session()
     session_id = session["session_id"]
 
-    try:
-        details = await extract_property_data_service(notes, API_KEY)
-
-        if images:
-            image_data = []
-            for upload in images:
-                image_bytes = await upload.read()
-                image_data.append((image_bytes, upload.filename or "image.jpg"))
-
-            session["original_images"] = image_data
-            print(f"[EXTRACT] Images read - {len(image_data)} files")
-
-            enhanced = await asyncio.to_thread(_resize_images, image_data)
-            session["enhanced_images"] = enhanced
-            print(f"[EXTRACT] Resize complete - {len(enhanced)} files")
-
-            try:
-                analyzed = await analyze_and_caption_property_images(enhanced, API_KEY)
-                session["analyzed_images"] = analyzed
-                print(f"[EXTRACT] Analysis complete - {len(analyzed)} images")
-            except Exception as e:
-                print(f"[EXTRACT] Analysis failed: {e}")
-                raise
-
-            intelligence = build_image_intelligence(analyzed)
-            session["image_intelligence"] = intelligence
-            print(f"[EXTRACT] Intelligence built")
-
-            details = merge_image_features_into_property(details, analyzed)
-            print(f"[EXTRACT] Features merged")
-
-        details = normalize_property_details(details)
-        session["extracted_details"] = details
-        session["generation_status"] = "extracted"
-        session["updated_at"] = time.time()
+    # Read image bytes synchronously before handing off to background task
+    image_data = []
+    if images:
+        for upload in images:
+            image_bytes = await upload.read()
+            image_data.append((image_bytes, upload.filename or "image.jpg"))
+        session["original_images"] = image_data
+        print(f"[EXTRACT] Images read - {len(image_data)} files")
         _write_session(session)
 
-    except Exception as e:
-        _redis_client.delete(_session_key(session_id))
-        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+    # Fire background extraction task and return immediately
+    asyncio.create_task(_run_extraction(session_id, notes, image_data))
 
     return {
         "sessionId": session_id,
-        "status": "extracted",
-        "property": _serialize_property(details),
-        "images": _serialize_images(
-            session.get("image_intelligence"), session_id
-        ),
-        "detectedFeatures": _serialize_detected_features(
-            session.get("analyzed_images")
-        ),
+        "status": "extracting",
     }
 
 
@@ -593,6 +553,53 @@ async def _run_generation(session_id: str, email_tone: str):
         _write_session(session)
 
     except Exception as e:
+        session["generation_status"] = "error"
+        session["generation_error"] = str(e)
+        session["updated_at"] = time.time()
+        _write_session(session)
+
+
+async def _run_extraction(session_id: str, notes: str, image_data: list[tuple[bytes, str]]):
+    """Background task — runs full extraction pipeline and updates session state."""
+    from services.listing_pipeline_service import extract_property_data_service
+    from services.image_analysis_service import analyze_and_caption_property_images
+    from services.fusion_service import merge_image_features_into_property
+    from services.property_normalization_service import normalize_property_details
+    from services.image_intelligence_service import build_image_intelligence
+
+    session = _read_session(session_id)
+    if not session:
+        return
+
+    try:
+        details = await extract_property_data_service(notes, API_KEY)
+
+        if image_data:
+            enhanced = await asyncio.to_thread(_resize_images, image_data)
+            session["enhanced_images"] = enhanced
+            print(f"[EXTRACT] Resize complete - {len(enhanced)} files")
+
+            analyzed = await analyze_and_caption_property_images(enhanced, API_KEY)
+            session["analyzed_images"] = analyzed
+            print(f"[EXTRACT] Analysis complete - {len(analyzed)} images")
+
+            intelligence = build_image_intelligence(analyzed)
+            session["image_intelligence"] = intelligence
+            print(f"[EXTRACT] Intelligence built")
+
+            details = merge_image_features_into_property(details, analyzed)
+            print(f"[EXTRACT] Features merged")
+
+        details = normalize_property_details(details)
+        session["extracted_details"] = details
+        session["generation_status"] = "extracted"
+        session["updated_at"] = time.time()
+        _write_session(session)
+        print(f"[EXTRACT] Complete for session {session_id}")
+
+    except Exception as e:
+        print(f"[EXTRACT] Failed for session {session_id}: {e}")
+        session = _read_session(session_id) or session
         session["generation_status"] = "error"
         session["generation_error"] = str(e)
         session["updated_at"] = time.time()

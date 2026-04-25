@@ -70,12 +70,12 @@ async function request<T>(
 export async function extractListing(
   photos: File[],
   notes: string
-): Promise<ExtractResponse> {
+): Promise<{ sessionId: string; status: string }> {
   const formData = new FormData();
   formData.append("notes", notes);
   photos.forEach((file) => formData.append("images", file));
 
-  return request<ExtractResponse>("/api/extract", {
+  return request<{ sessionId: string; status: string }>("/api/extract", {
     method: "POST",
     body: formData,
   });
