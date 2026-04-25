@@ -44,25 +44,44 @@ function ReviewPageContent({ sessionId }: { sessionId: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
-  // Load session on mount
+// Poll session until extracted
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+
+    const poll = async () => {
       try {
         const data = await getSession(sessionId);
+        if (cancelled) return;
+
+        if (data.status === "error") {
+          setLoadError("Extraction failed. Try going back and uploading again.");
+          setIsLoadingSession(false);
+          return;
+        }
+
+        if (data.status === "extracting") {
+          setTimeout(poll, 2000);
+          return;
+        }
+
+        // extracted or beyond — ready to render
         setSession(data);
         setProperty(data.property);
         setFeatures(data.detectedFeatures);
+        setIsLoadingSession(false);
       } catch (err) {
-        console.log("Session load error:", err);
+        if (cancelled) return;
         setLoadError(
           err instanceof ApiError && err.status === 404
             ? "Session not found. It may have expired."
             : "Could not load your listing data. Try going back and uploading again."
         );
-      } finally {
         setIsLoadingSession(false);
       }
-    })();
+    };
+
+    poll();
+    return () => { cancelled = true; };
   }, [sessionId]);
 
   const handleGenerate = async () => {
