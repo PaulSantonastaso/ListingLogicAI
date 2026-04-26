@@ -925,9 +925,11 @@ async def stripe_webhook(request: Request):
                 # Trigger photo enhancement if photos were purchased
                 if purchase_type in ("photos", "both"):
                     from services.photo_enhancement_service import trigger_photo_enhancement
-                    asyncio.create_task(
-                        trigger_photo_enhancement(session_id=session_id, session=s, redis_client=_redis_client)
-                    )
+                    async def _enhance_and_persist(sid: str, s: dict):
+                        await trigger_photo_enhancement(session_id=sid, session=s, redis_client=_redis_client)
+                        _write_session(s)
+
+                    asyncio.create_task(_enhance_and_persist(session_id, s))
 
     return {"received": True}
 
