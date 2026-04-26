@@ -556,7 +556,7 @@ async def _run_generation(session_id: str, email_tone: str):
         )
 
         if session.get("image_intelligence") and session.get("original_images"):
-            rename_result = build_renamed_image_set(
+            rename_result = session.get("rename_result") or build_renamed_image_set(
                 image_intelligence=session["image_intelligence"],
                 original_images=session["original_images"],
             )
@@ -577,7 +577,7 @@ async def _run_generation(session_id: str, email_tone: str):
 async def _run_extraction(session_id: str, notes: str, image_data: list[tuple[bytes, str]]):
     """Background task — runs full extraction pipeline and updates session state."""
     from services.listing_pipeline_service import extract_property_data_service
-    from services.image_analysis_service import analyze_and_caption_property_images
+    from services.image_analysis_service import analyze_property_images
     from services.fusion_service import merge_image_features_into_property
     from services.property_normalization_service import normalize_property_details
     from services.image_intelligence_service import build_image_intelligence
@@ -594,7 +594,7 @@ async def _run_extraction(session_id: str, notes: str, image_data: list[tuple[by
             session["enhanced_images"] = enhanced
             print(f"[EXTRACT] Resize complete - {len(enhanced)} files")
 
-            analyzed = await analyze_and_caption_property_images(enhanced, API_KEY)
+            analyzed = await analyze_property_images(enhanced, API_KEY)
             session["analyzed_images"] = analyzed
             print(f"[EXTRACT] Analysis complete - {len(analyzed)} images")
 
@@ -612,6 +612,10 @@ async def _run_extraction(session_id: str, notes: str, image_data: list[tuple[by
         _write_session(session)
         print(f"[EXTRACT] Complete for session {session_id}")
 
+        # Fire background tasks — user is now on review page
+        if image_data:
+            asyncio.create_task(_run_captions_and_rename(session_id))
+
     except Exception as e:
         print(f"[EXTRACT] Failed for session {session_id}: {e}")
         session = _read_session(session_id) or session
@@ -619,6 +623,51 @@ async def _run_extraction(session_id: str, notes: str, image_data: list[tuple[by
         session["generation_error"] = str(e)
         session["updated_at"] = time.time()
         _write_session(session)
+
+
+async def _run_captions_and_rename(session_id: str):
+    """
+    Background task — runs during review page dwell time.
+    Generates image captions and builds rename result.
+    Both are available when _run_generation fires.
+    """
+    from services.image_analysis_service import generate_image_captions
+    from services.image_rename_service import build_renamed_image_set
+
+    session = _read_session(session_id)
+    if not session or not session.get("analyzed_images"):
+        return
+
+    try:
+        # Run captions and rename concurrently
+        async def _caption():
+            captioned = await generate_image_captions(
+                session["analyzed_images"], API_KEY
+            )
+            s = _read_session(session_id)
+            if s:
+                s["analyzed_images"] = captioned
+                s["updated_at"] = time.time()
+                _write_session(s)
+            print(f"[EXTRACT] Captions complete for session {session_id}")
+
+        async def _rename():
+            if session.get("image_intelligence") and session.get("original_images"):
+                rename_result = build_renamed_image_set(
+                    image_intelligence=session["image_intelligence"],
+                    original_images=session["original_images"],
+                )
+                s = _read_session(session_id)
+                if s:
+                    s["rename_result"] = rename_result
+                    s["updated_at"] = time.time()
+                    _write_session(s)
+            print(f"[EXTRACT] Rename complete for session {session_id}")
+
+        await asyncio.gather(_caption(), _rename())
+
+    except Exception as e:
+        print(f"[EXTRACT] Captions/rename failed for session {session_id}: {e}")
 
 
 # ---------------------------------------------------------------------------
