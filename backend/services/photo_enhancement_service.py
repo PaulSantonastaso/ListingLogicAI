@@ -218,17 +218,36 @@ async def download_enhanced_photos(session: dict) -> list[tuple[bytes, str]]:
     results: list[tuple[bytes, str]] = []
 
     try:
-        async with httpx.AsyncClient(timeout=120.0, follow_redirects=False) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             for image_id in image_ids:
-                resp = await client.get(
+                ae_resp = await client.get(
                     f"{AUTOENHANCE_BASE_URL}/images/{image_id}/enhanced",
                     headers=_headers(),
                     params={"preview": False},
+                    follow_redirects=False,
                 )
-                logger.info(f"[AUTOENHANCE] status={resp.status_code}")
-                logger.info(f"[AUTOENHANCE] headers={dict(resp.headers)}")
-                logger.info(f"[AUTOENHANCE] body={resp.text[:500]}")
-                continue
+                if ae_resp.status_code == 200:
+                    image_bytes = ae_resp.content
+                    content_disposition = ae_resp.headers.get("content-disposition", "")
+                elif ae_resp.status_code in (301, 302, 303, 307, 308):
+                    location = ae_resp.headers.get("location", "")
+                    if location.startswith("/"):
+                        location = f"https://api.autoenhance.ai{location}"
+                    img_resp = await client.get(location, follow_redirects=True)
+                    img_resp.raise_for_status()
+                    image_bytes = img_resp.content
+                    content_disposition = img_resp.headers.get("content-disposition", "")
+                else:
+                    logger.error(f"[AUTOENHANCE] Unexpected status {ae_resp.status_code} for {image_id}")
+                    continue
+
+                if "filename=" in content_disposition:
+                    filename = content_disposition.split("filename=")[-1].strip('"')
+                else:
+                    filename = f"{image_id}.jpg"
+
+                results.append((image_bytes, filename))
+                logger.info(f"[AUTOENHANCE] Downloaded enhanced image {image_id}")
 
     except Exception as e:
         logger.error(f"[AUTOENHANCE] download_enhanced_photos failed: {e}")
