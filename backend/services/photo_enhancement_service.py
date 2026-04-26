@@ -99,12 +99,12 @@ async def trigger_photo_enhancement(
         logger.warning(f"[AUTOENHANCE] No images found on session {session_id}")
         return
 
-    # Build renamed filename lookup for SEO-preserving filenames
+    # Build renamed filename lookup from rename_result (in-memory, pre-serialization)
     results = session.get("results") or {}
-    listing_details = results.get("listing_details")
+    rename_result = results.get("rename_result")
     rename_lookup: dict[str, str] = {}
-    if listing_details and hasattr(listing_details, "all_images"):
-        for img in listing_details.all_images:
+    if rename_result and hasattr(rename_result, "all_images"):
+        for img in rename_result.all_images:
             rename_lookup[img.image_id] = img.renamed_filename
 
     uploaded_image_ids: list[str] = []
@@ -179,6 +179,9 @@ async def trigger_photo_enhancement(
 
                 uploaded_image_ids.append(ae_image_id)
                 session["autoenhance_image_ids"] = uploaded_image_ids[:]
+                ae_rename_map = session.get("autoenhance_rename_map") or {}
+                ae_rename_map[ae_image_id] = renamed
+                session["autoenhance_rename_map"] = ae_rename_map
                 if redis_client:
                     redis_client.setex(
                         f"session:{session_id}",
@@ -241,10 +244,8 @@ async def download_enhanced_photos(session: dict) -> list[tuple[bytes, str]]:
                     logger.error(f"[AUTOENHANCE] Unexpected status {ae_resp.status_code} for {image_id}")
                     continue
 
-                if "filename=" in content_disposition:
-                    filename = content_disposition.split("filename=")[-1].strip('"')
-                else:
-                    filename = f"{image_id}.jpg"
+                rename_map = session.get("autoenhance_rename_map") or {}
+                filename = rename_map.get(image_id) or f"{image_id}.jpg"
 
                 results.append((image_bytes, filename))
                 logger.info(f"[AUTOENHANCE] Downloaded enhanced image {image_id}")
