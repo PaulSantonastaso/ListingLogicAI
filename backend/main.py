@@ -39,6 +39,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 load_dotenv()
+import logging
+logging.basicConfig(level=logging.INFO)
 
 def _resize_images(
     uploaded_images: list[tuple[bytes, str]],
@@ -926,7 +928,7 @@ async def stripe_webhook(request: Request):
                 if purchase_type in ("photos", "both"):
                     from services.photo_enhancement_service import trigger_photo_enhancement
                     async def _enhance_and_persist(sid: str, s: dict):
-                        await trigger_photo_enhancement(session_id=sid, session=s, redis_client=_redis_client)
+                        await trigger_photo_enhancement(session_id=sid, session=s, redis_client=_redis_client, session_ttl=SESSION_TTL)
                         _write_session(s)
 
                     asyncio.create_task(_enhance_and_persist(session_id, s))

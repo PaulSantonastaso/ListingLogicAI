@@ -22,6 +22,7 @@ import os
 from typing import TYPE_CHECKING
 
 import httpx
+import pickle
 
 if TYPE_CHECKING:
     import redis as redis_module
@@ -70,6 +71,7 @@ async def trigger_photo_enhancement(
     session_id: str,
     session: dict,
     redis_client: "redis_module.Redis | None" = None,
+    session_ttl: int = 86400,
 ) -> None:
     """
     Uploads all session images to Autoenhance.
@@ -108,7 +110,7 @@ async def trigger_photo_enhancement(
     uploaded_image_ids: list[str] = []
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
 
             # Step 1 — Create order to group all images
             order_resp = await client.post(
@@ -176,9 +178,16 @@ async def trigger_photo_enhancement(
                 upload_resp.raise_for_status()
 
                 uploaded_image_ids.append(ae_image_id)
+                session["autoenhance_image_ids"] = uploaded_image_ids[:]
+                if redis_client:
+                    redis_client.setex(
+                        f"session:{session_id}",
+                        session_ttl,
+                        pickle.dumps(session),
+                    )
                 logger.info(f"[AUTOENHANCE] Uploaded {renamed} as {ae_image_id}")
 
-        # Store image IDs on session for webhook download
+        # Final status update
         session["autoenhance_image_ids"] = uploaded_image_ids
         session["enhancement_status"] = "processing"
         logger.info(
@@ -199,6 +208,9 @@ async def download_enhanced_photos(session: dict) -> list[tuple[bytes, str]]:
     Called from the Autoenhance webhook when order_is_processing=False.
     """
     image_ids: list[str] = session.get("autoenhance_image_ids") or []
+    logger.info(f"[AUTOENHANCE] Session keys: {list(session.keys())}")
+    logger.info(f"[AUTOENHANCE] image_ids on session: {image_ids}")
+    logger.info(f"[AUTOENHANCE] enhancement_status: {session.get('enhancement_status')}")
     if not image_ids:
         logger.warning("[AUTOENHANCE] No image IDs on session — cannot download")
         return []
