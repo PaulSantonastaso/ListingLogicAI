@@ -206,9 +206,8 @@ async def download_enhanced_photos(session: dict) -> list[tuple[bytes, str]]:
     results: list[tuple[bytes, str]] = []
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0, follow_redirects=True) as client:
             for image_id in image_ids:
-                # Download enhanced image bytes directly
                 download_resp = await client.get(
                     f"{AUTOENHANCE_BASE_URL}/images/{image_id}/enhanced",
                     headers=_headers(),
