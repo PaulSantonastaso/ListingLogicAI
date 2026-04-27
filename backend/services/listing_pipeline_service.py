@@ -46,9 +46,9 @@ async def generate_marketing_assets_service(
     photos_count: Optional[int] = None,
     google_places_api_key: Optional[str] = None,
 ):
-    listing_chain = build_listing_description_chain(api_key)
-    social_chain = build_social_post_chain(api_key)
-    email_chain = build_email_chain(api_key)
+    listing_chain = build_listing_description_chain(api_key).with_config(run_name="MLS Description")
+    social_chain = build_social_post_chain(api_key).with_config(run_name="Social Posts")
+    email_chain = build_email_chain(api_key).with_config(run_name="Email Campaign")
     compliance_service = ComplianceService(api_key)
 
     property_details_json = details.model_dump_json(indent=2)
@@ -147,7 +147,7 @@ async def generate_marketing_assets_service(
 
     # --- Video task (toggled) ---
     if ENABLE_VIDEO_SCRIPTS:
-        video_chain = build_video_script_chain(api_key)
+        video_chain = build_video_script_chain(api_key).with_config(run_name="Video Scripts")
         hero_image_context_video = _format_hero_image_context_video(image_intelligence)
         shot_list_str = _format_shot_list(video_shot_plan)
         video_task = video_chain.ainvoke({

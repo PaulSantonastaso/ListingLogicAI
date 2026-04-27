@@ -38,9 +38,21 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
+from services.compliance_tool_service import (
+    pre_screen_compliance_input,
+    check_ip_gate as check_compliance_ip_gate,
+    increment_run_count as increment_compliance_run_count,
+)
+from services.compliance_service import ComplianceService
+from services.neighborhood_tool_service import (
+    check_ip_gate as check_neighborhood_ip_gate,
+    increment_run_count as increment_neighborhood_run_count,
+)
+
 load_dotenv()
 import logging
 logging.basicConfig(level=logging.INFO)
+
 
 def _resize_images(
     uploaded_images: list[tuple[bytes, str]],
@@ -1122,4 +1134,143 @@ async def mock_payment(session_id: str, request: Request):
         "sessionId": session_id,
         "paid": purchase_type,
         "downloadToken": token,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/tools/compliance-check
+# ---------------------------------------------------------------------------
+
+@app.post("/api/tools/compliance-check")
+async def compliance_check_tool(
+    request: Request,
+    payload: dict,
+):
+    """
+    Free Fair Housing compliance checker.
+    3 free runs per IP per 7 days, then requires email.
+    """
+    text = payload.get("text", "").strip()
+    email = payload.get("email", None)
+    ip = request.client.host if request.client else "unknown"
+
+    # Input validation
+    if not text:
+        raise HTTPException(status_code=422, detail="text is required.")
+    if len(text) > 2000:
+        raise HTTPException(status_code=400, detail="input_too_long")
+
+    # IP gate
+    gate = check_compliance_ip_gate(ip, email, _redis_client)
+    if not gate["allowed"]:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "gate": "email_required",
+                "runs_used": gate["runs_used"],
+            },
+        )
+
+    # Pre-screen
+    is_real_estate = await pre_screen_compliance_input(text, API_KEY)
+    if not is_real_estate:
+        raise HTTPException(status_code=400, detail="not_real_estate_content")
+
+    # Run compliance chain
+    try:
+        compliance_service = ComplianceService(API_KEY)
+        result = await compliance_service.review_asset("mls_summary", text)
+    except Exception as e:
+        print(f"[COMPLIANCE TOOL] Chain failed: {e}")
+        raise HTTPException(status_code=500, detail="Compliance check failed.")
+
+    # Increment run count
+    increment_compliance_run_count(ip, _redis_client)
+
+    return {
+        "status": result.status,
+        "issues_found": result.issues_found,
+        "compliant_text": result.compliant_text,
+        "original_text": text,
+        "reviewer_notes": result.reviewer_notes,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/tools/neighborhood-guide
+# ---------------------------------------------------------------------------
+
+@app.post("/api/tools/neighborhood-guide")
+async def neighborhood_guide_tool(
+    request: Request,
+    payload: dict,
+):
+    """
+    Free Neighborhood Guide Generator.
+    3 free runs per IP per 7 days, then requires email.
+    Geocoding failure is the input guard.
+    """
+    address = (payload.get("address") or "").strip()
+    email = payload.get("email", None)
+    ip = request.client.host if request.client else "unknown"
+
+    # Input validation
+    if not address:
+        raise HTTPException(status_code=422, detail="address is required.")
+    if len(address) > 200:
+        raise HTTPException(status_code=400, detail="input_too_long")
+
+    # IP gate
+    gate = check_neighborhood_ip_gate(ip, email, _redis_client)
+    if not gate["allowed"]:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "gate": "email_required",
+                "runs_used": gate["runs_used"],
+            },
+        )
+
+    # Geocoding as input guard + Places pipeline
+    try:
+        from services.neighborhood_service import build_neighborhood_context
+        from chains.neighborhood_chain import generate_neighborhood_copy
+
+        neighborhood_context = await build_neighborhood_context(
+            address=address,
+            api_key=GOOGLE_PLACES_API_KEY,
+        )
+
+        if not neighborhood_context:
+            raise HTTPException(
+                status_code=400,
+                detail="address_not_found",
+            )
+
+        neighborhood_copy = await generate_neighborhood_copy(
+            address=address,
+            places_formatted=neighborhood_context.format_for_prompt(),
+            api_key=API_KEY,
+        )
+
+        if not neighborhood_copy:
+            raise HTTPException(
+                status_code=500,
+                detail="Guide generation failed.",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[NEIGHBORHOOD TOOL] Pipeline failed: {e}")
+        raise HTTPException(status_code=500, detail="Guide generation failed.")
+
+    # Increment run count
+    increment_neighborhood_run_count(ip, _redis_client)
+
+    return {
+        "address": address,
+        "neighborhood_guide": neighborhood_copy.neighborhood_guide or "",
+        "mls_insert": neighborhood_copy.mls_insert or "",
+        "places": [p.name for p in neighborhood_context.places],
     }
