@@ -77,7 +77,7 @@ async def _send_email(
                     "Content-Type": "application/json",
                 },
                 json={
-                    "from": from_email,
+                    "from": f"Metes <{from_email}>",
                     "to": [to],
                     "subject": subject,
                     "html": html,
