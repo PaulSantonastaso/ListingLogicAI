@@ -10,7 +10,7 @@ from models.compliance import ComplianceReviewResult
 
 class ComplianceService:
     def __init__(self, api_key: str):
-        self.chain = build_fair_housing_compliance_chain(api_key)
+        self.chain = build_fair_housing_compliance_chain(api_key).with_config(run_name="Compliance Review")
 
     async def review_asset(self, asset_type: str, text: str) -> ComplianceReviewResult:
         if not text or not text.strip():

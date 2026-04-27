@@ -98,7 +98,7 @@ async def extract_property_image(
     image_b64 = _encode_image_to_base64(image_bytes)
 
     llm = build_image_extraction_model(api_key, model_name=model_name)
-    structured_llm = llm.with_structured_output(PropertyImage)
+    structured_llm = llm.with_structured_output(PropertyImage).with_config(run_name="Image Vision Analysis")
 
     message = HumanMessage(
         content=[

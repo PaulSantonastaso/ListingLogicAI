@@ -33,7 +33,7 @@ ENABLE_RESO_CSV = False
 
 
 async def extract_property_data_service(raw_notes: str, api_key: str) -> PropertyDetails:
-    extraction_chain = build_extraction_chain(api_key)
+    extraction_chain = build_extraction_chain(api_key).with_config(run_name="Extraction")
     extracted_details = await extraction_chain.ainvoke({"raw_notes": raw_notes})
     return cast(PropertyDetails, extracted_details)
 

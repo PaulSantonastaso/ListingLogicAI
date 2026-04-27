@@ -112,7 +112,7 @@ async def generate_caption_for_image(
     Generate a single marketing caption for one image.
     Returns the caption string or a safe fallback if generation fails.
     """
-    chain = build_image_caption_chain(api_key)
+    chain = build_image_caption_chain(api_key).with_config(run_name="Image Caption")
 
     features_str = ", ".join(visible_features) if visible_features else "none detected"
     quality_str = f"{quality_score:.2f}" if quality_score is not None else "unknown"

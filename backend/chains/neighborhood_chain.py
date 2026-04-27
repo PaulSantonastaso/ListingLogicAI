@@ -103,7 +103,7 @@ async def generate_neighborhood_copy(
         return None
 
     try:
-        chain = build_neighborhood_chain(api_key)
+        chain = build_neighborhood_chain(api_key).with_config(run_name="Neighborhood Copy")
         result = await chain.ainvoke({
             "address": address,
             "places_formatted": places_formatted,
