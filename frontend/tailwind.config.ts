@@ -20,6 +20,8 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        manrope: ["var(--font-manrope)", "system-ui", "sans-serif"],
+        mono:  ["var(--font-jetbrains)", "monospace"],
       },
       fontSize: {
         "2xs": ["0.75rem", { lineHeight: "1rem" }],   // 12px
@@ -54,6 +56,20 @@ const config: Config = {
         card: {
           DEFAULT:    "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        metes: {
+          cream:    "#EFEAE0",
+          "cream-warm": "#F4F0E8",
+          "bg-card": "#FAF7F0",
+          forest:   "#1F3D2E",
+          "forest-deep": "#14271E",
+          "forest-dim":  "#2C4D3D",
+          moss:     "#4A6B53",
+          gold:     "#B89968",
+          "gold-deep": "#9A7E50",
+          "gold-soft": "#D9C49C",
+          ink:      "#14271E",
+          "ink-soft": "#4A6B53",
         },
       },
       borderRadius: {
