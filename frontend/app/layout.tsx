@@ -27,14 +27,52 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "metes — AI-Powered Real Estate Marketing",
+  title: "metes — AI-Powered Real Estate Listing Marketing",
   description:
-    "Upload your listing photos and agent notes. Get a complete marketing campaign — MLS description, social posts, and email sequences — in under a minute.",
+    "Upload your listing photos and agent notes. Get MLS copy, social posts, email campaigns, and a Fair Housing audit — in under 60 seconds. $35 per listing, no subscription.",
   metadataBase: new URL("https://www.metes.app"),
+  manifest: "/manifest.json",
+  keywords: [
+    "real estate listing marketing",
+    "AI listing description",
+    "MLS description generator",
+    "real estate social media posts",
+    "Fair Housing compliance",
+    "listing marketing for agents",
+    "real estate email campaign",
+    "AI real estate marketing",
+  ],
+  authors: [{ name: "metes", url: "https://www.metes.app" }],
+  creator: "metes",
   openGraph: {
-    title: "metes",
-    description: "AI-powered listing marketing for high-performing agents.",
+    title: "metes — AI-Powered Real Estate Listing Marketing",
+    description:
+      "MLS copy, social posts, email campaigns, and Fair Housing audit — generated from your photos and notes. $35 per listing.",
+    url: "https://www.metes.app",
+    siteName: "metes",
     type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "metes — AI-Powered Real Estate Listing Marketing",
+    description:
+      "MLS copy, social posts, email campaigns, and Fair Housing audit — generated from your photos and notes. $35 per listing.",
+    creator: "@metesapp",
+  },
+  alternates: {
+    canonical: "https://www.metes.app",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 

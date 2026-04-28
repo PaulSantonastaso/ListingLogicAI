@@ -25,10 +25,11 @@ export function Navbar({
   return (
     <header
       className={cn(
-        "flex h-[52px] items-center justify-between border-b border-border bg-background px-6 max-w-5xl mx-auto w-full",
+        "w-full border-b border-border bg-background",
         className
       )}
     >
+      <div className="mx-auto flex h-[52px] w-full max-w-[1280px] items-center justify-between px-6 lg:px-12">
       {/* Logo */}
       <Link
         href="/"
@@ -75,6 +76,7 @@ export function Navbar({
           // Spacer to keep logo centered on homepage
           <div />
         )}
+      </div>
       </div>
     </header>
   );

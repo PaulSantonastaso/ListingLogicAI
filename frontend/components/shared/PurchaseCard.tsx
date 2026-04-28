@@ -121,8 +121,9 @@ export function PurchaseCard({
       <button
         onClick={handleCheckout}
         disabled={isLoading || isGenerating}
+        style={{ background: "var(--metes-forest)", color: "var(--metes-cream)" }}
         className={cn(
-          "flex w-full items-center justify-center gap-2 rounded-[10px] bg-foreground py-3 text-xs font-semibold text-background transition-opacity",
+          "flex w-full items-center justify-center gap-2 rounded-[10px] py-3 text-xs font-semibold transition-opacity",
           (isLoading || isGenerating) ? "cursor-not-allowed opacity-60" : "hover:opacity-90"
         )}
       >
@@ -172,10 +173,11 @@ function OptionCard({
   return (
     <button
       onClick={onSelect}
+      style={selected ? { borderColor: "var(--metes-forest)" } : {}}
       className={cn(
         "w-full rounded-lg border p-3 text-left transition-colors",
         selected
-          ? "border-foreground bg-muted/50"
+          ? "bg-muted/50"
           : "border-border bg-transparent hover:border-foreground/30"
       )}
     >

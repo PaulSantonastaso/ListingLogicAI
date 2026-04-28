@@ -1,0 +1,46 @@
+# metes
+
+> AI-powered listing marketing for high-performing solo real estate agents.
+
+metes (https://www.metes.app) is a per-listing marketing engine that generates a complete campaign from listing photos and agent notes. Agents upload photos and notes, review AI-extracted property details, then receive a full marketing package — all before paying.
+
+## What metes produces
+
+- MLS-ready listing description (lifestyle-forward, not utility-forward)
+- Social launch pack — Facebook and Instagram captions paired to specific listing photos
+- 4-email campaign sequence — Just Listed, Open House, Why This Home, Just Sold
+- Fair Housing compliance audit on every asset before publishing
+- Top 25 photos ranked by marketing impact and renamed with SEO-friendly filenames
+- Optional: professional photo editing — sky replacement, color correction, perspective fix
+
+## How it works
+
+1. Agent uploads listing photos (up to 50) and pastes agent notes
+2. metes analyzes photos using computer vision to detect room types, features, and quality
+3. Agent reviews and corrects extracted property details
+4. metes generates the full marketing campaign in ~30 seconds
+5. Agent previews everything before paying $35
+6. Download ZIP contains all assets ready for MLS upload and distribution
+
+## Pricing
+
+- Listing Copy Package: $35 per listing (no subscription)
+- Photo Editing Add-on: +$45 (color correction, sky replacement, perspective fix)
+- No account required. No card on file until after preview.
+
+## Free tools
+
+- Fair Housing Compliance Checker (https://www.metes.app/tools/compliance-check) — paste any listing description for a free Fair Housing audit
+- Neighborhood Guide Generator (https://www.metes.app/tools/neighborhood-guide) — enter any address to generate a neighborhood guide for agents and buyers
+
+## Technology
+
+metes uses Google Gemini Flash for vision analysis and copy generation, Autoenhance.ai for photo editing, and Cloudflare R2 for asset storage. Built on FastAPI (Python) and Next.js.
+
+## Target user
+
+High-performing solo real estate agents in the United States who list residential properties and want to move faster without sacrificing marketing quality.
+
+## Company
+
+metes is an independent micro-SaaS product. Contact: assets@metes.app

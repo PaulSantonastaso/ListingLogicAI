@@ -134,6 +134,43 @@ function CompareRow({ label, color, children }: { label: string; color: string; 
 export default function HomePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "metes",
+            "url": "https://www.metes.app",
+            "description": "AI-powered listing marketing for high-performing solo real estate agents. Generate MLS descriptions, social posts, email campaigns, and Fair Housing audits from listing photos and agent notes.",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "offers": {
+              "@type": "Offer",
+              "price": "35.00",
+              "priceCurrency": "USD",
+              "priceSpecification": {
+                "@type": "UnitPriceSpecification",
+                "price": "35.00",
+                "priceCurrency": "USD",
+                "unitText": "per listing"
+              }
+            },
+            "audience": {
+              "@type": "Audience",
+              "audienceType": "Real estate agents"
+            },
+            "featureList": [
+              "MLS listing description",
+              "Social media launch pack",
+              "4-email campaign sequence",
+              "Fair Housing compliance audit",
+              "Photo ranking and renaming",
+              "Professional photo editing"
+            ]
+          })
+        }}
+      />
       <style>{`
         html, body { background: #EFEAE0; }
 

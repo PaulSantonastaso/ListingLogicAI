@@ -3,15 +3,6 @@ listing_email.py
 
 Builds the listing delivery email content.
 Called immediately after Stripe payment confirmation.
-
-Email contains:
-  - Listing headline (prominent)
-  - MLS description (full text, inline)
-  - Just Listed email subject + preview text
-  - Download link (7-day TTL, multi-use)
-
-No attachments — content inline, download link for ZIP.
-Avoids email size limits and corporate spam filters.
 """
 
 
@@ -28,7 +19,6 @@ def build_listing_delivery_html(
     preview_url: str,
 ) -> str:
     address_str = address or "your listing"
-    headline_str = headline or ""
 
     return f"""<!DOCTYPE html>
 <html>
@@ -37,56 +27,90 @@ def build_listing_delivery_html(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Your listing package is ready</title>
 </head>
-<body style="margin:0;padding:0;background:#f5f4f1;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4f1;padding:40px 20px;">
+<body style="margin:0;padding:0;background:#EFEAE0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#EFEAE0;padding:40px 20px;">
     <tr>
       <td align="center">
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
 
           <!-- Brand -->
           <tr>
-            <td style="padding-bottom:32px;">
-              <span style="font-size:15px;font-weight:700;color:#1a1a1a;letter-spacing:-0.3px;">
-                ListingLogicAI
+            <td style="padding-bottom:28px;">
+              <span style="font-size:16px;font-weight:700;color:#1F3D2E;letter-spacing:-0.3px;">
+                metes
               </span>
             </td>
           </tr>
 
-          <!-- Headline card -->
+          <!-- Header card -->
           <tr>
-            <td style="background:#1a1a1a;border-radius:12px;padding:28px 32px;">
-              <p style="margin:0 0 6px 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.5);">
-                Listing Headline
+            <td style="background:#1F3D2E;border-radius:12px;padding:28px 32px;">
+              <p style="margin:0 0 6px 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:rgba(244,240,232,0.55);">
+                Listing Package Ready
               </p>
-              <p style="margin:0;font-size:18px;font-weight:600;line-height:1.4;color:#ffffff;">
-                {headline_str}
+              <p style="margin:0;font-size:20px;font-weight:600;line-height:1.35;color:#F4F0E8;">
+                {address_str}
               </p>
             </td>
           </tr>
 
           <!-- Spacer -->
-          <tr><td style="height:16px;"></td></tr>
+          <tr><td style="height:12px;"></td></tr>
+
+          <!-- What's included -->
+          <tr>
+            <td style="background:#FAF7F0;border-radius:12px;padding:24px 32px;">
+              <p style="margin:0 0 14px 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:#9A7E50;">
+                What&apos;s in your package
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:7px 0;border-bottom:1px solid #EFEAE0;">
+                    <span style="font-size:13px;color:#1F3D2E;">MLS-ready listing description</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:7px 0;border-bottom:1px solid #EFEAE0;">
+                    <span style="font-size:13px;color:#1F3D2E;">Social launch pack — Facebook + Instagram</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:7px 0;border-bottom:1px solid #EFEAE0;">
+                    <span style="font-size:13px;color:#1F3D2E;">4-email campaign sequence</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:7px 0;">
+                    <span style="font-size:13px;color:#1F3D2E;">Fair Housing compliance audit</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Spacer -->
+          <tr><td style="height:12px;"></td></tr>
 
           <!-- CTA card -->
           <tr>
-            <td style="background:#ffffff;border-radius:12px;padding:28px 32px;text-align:center;">
-              <p style="margin:0 0 6px 0;font-size:14px;font-weight:600;color:#1a1a1a;">
-                Your listing package for {address_str} is ready
+            <td style="background:#FAF7F0;border-radius:12px;padding:28px 32px;text-align:center;">
+              <p style="margin:0 0 6px 0;font-size:14px;font-weight:600;color:#14271E;">
+                Ready to use
               </p>
-              <p style="margin:0 0 20px 0;font-size:12px;color:#8a8a8a;">
-                MLS description, social posts, email campaign, and compliance audit — all ready to use.
+              <p style="margin:0 0 22px 0;font-size:12px;color:#4A6B53;line-height:1.55;">
+                View your full campaign online or download everything as a ZIP — your call.
               </p>
               <a href="{preview_url}"
-                 style="display:inline-block;background:#1a1a1a;color:#ffffff;text-decoration:none;font-size:13px;font-weight:600;padding:14px 32px;border-radius:8px;">
-                View Your Listing Package →
+                 style="display:inline-block;background:#1F3D2E;color:#F4F0E8;text-decoration:none;font-size:13px;font-weight:600;padding:14px 32px;border-radius:8px;">
+                View Listing Package →
               </a>
-              <p style="margin:20px 0 12px 0;font-size:11px;color:#b4b2a9;">or</p>
+              <p style="margin:18px 0 10px 0;font-size:11px;color:#9A7E50;">or</p>
               <a href="{download_url}"
-                 style="display:inline-block;color:#1a1a1a;text-decoration:none;font-size:12px;font-weight:600;padding:10px 24px;border-radius:8px;border:1px solid #e0ddd8;">
-                ⬇ Download Package
+                 style="display:inline-block;color:#1F3D2E;text-decoration:none;font-size:12px;font-weight:600;padding:10px 24px;border-radius:8px;border:1px solid #B89968;">
+                Download ZIP
               </a>
-              <p style="margin:16px 0 0 0;font-size:11px;color:#b4b2a9;">
-                Link valid for 7 days · You can return anytime
+              <p style="margin:16px 0 0 0;font-size:11px;color:#9A7E50;">
+                Link valid for 7 days · Return anytime
               </p>
             </td>
           </tr>
@@ -97,8 +121,8 @@ def build_listing_delivery_html(
           <!-- Footer -->
           <tr>
             <td style="text-align:center;padding-bottom:20px;">
-              <p style="margin:0;font-size:11px;color:#b4b2a9;">
-                ListingLogicAI · AI-powered listing marketing for high-performing agents
+              <p style="margin:0;font-size:11px;color:#9A7E50;">
+                metes · AI-powered listing marketing for high-performing agents
               </p>
             </td>
           </tr>
@@ -118,14 +142,16 @@ def build_listing_delivery_text(
     preview_url: str,
 ) -> str:
     address_str = address or "your listing"
-    lines = [
+    return "\n".join([
         f"Your listing package for {address_str} is ready",
         "=" * 60,
         "",
-    ]
-    if headline:
-        lines += [headline, ""]
-    lines += [
+        "What's included:",
+        "  - MLS-ready listing description",
+        "  - Social launch pack — Facebook + Instagram",
+        "  - 4-email campaign sequence",
+        "  - Fair Housing compliance audit",
+        "",
         "VIEW YOUR LISTING PACKAGE",
         "-" * 40,
         preview_url,
@@ -133,9 +159,8 @@ def build_listing_delivery_text(
         "Or download directly:",
         download_url,
         "",
-        "Link valid for 7 days. You can return anytime.",
+        "Link valid for 7 days. Return anytime.",
         "",
         "—",
-        "ListingLogicAI · AI-powered listing marketing",
-    ]
-    return "\n".join(lines)
+        "metes · AI-powered listing marketing",
+    ])
