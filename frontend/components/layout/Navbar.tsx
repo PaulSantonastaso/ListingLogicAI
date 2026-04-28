@@ -25,7 +25,7 @@ export function Navbar({
   return (
     <header
       className={cn(
-        "flex h-[52px] items-center justify-between border-b border-border bg-background px-6",
+        "flex h-[52px] items-center justify-between border-b border-border bg-background px-6 max-w-5xl mx-auto w-full",
         className
       )}
     >
@@ -34,7 +34,7 @@ export function Navbar({
         href="/"
         className="text-sm font-semibold tracking-tight text-foreground hover:opacity-80 transition-opacity"
       >
-        ListingLogicAI
+        metes
       </Link>
 
       {/* Center — step indicator (review + preview pages only) */}

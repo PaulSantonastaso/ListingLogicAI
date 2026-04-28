@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, JetBrains_Mono, Onest } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
@@ -8,8 +8,21 @@ const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  // Only load the weights we use (400, 500, 600)
   weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+const onest = Onest({
+  subsets: ["latin"],
+  variable: "--font-onest",
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+  weight: ["400", "500"],
   display: "swap",
 });
 
@@ -31,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${onest.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
         {META_PIXEL_ID && (
