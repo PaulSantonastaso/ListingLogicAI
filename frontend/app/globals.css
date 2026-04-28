@@ -32,6 +32,15 @@
     --accent-foreground:  240 5.9% 10%;
 
     --radius: 0.5rem; /* 8px — cards */
+
+    /* ── Metes brand tokens ── */
+    --metes-forest:     #1F3D2E;
+    --metes-forest-deep:#14271E;
+    --metes-cream:      #F4F0E8;
+    --metes-gold:       #B89968;
+    --metes-gold-deep:  #9A7E50;
+    --metes-ink-soft:   #4A6B53;
+    --metes-border:     rgba(20,39,30,0.10);
   }
 
   /* ── Typography base ── */

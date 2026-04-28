@@ -49,7 +49,7 @@ const sectionHeadline: React.CSSProperties = {
   fontWeight: 500,
   fontSize: "clamp(28px, 4vw, 48px)",
   lineHeight: 1.06,
-  letterSpacing: "-0.03em",
+  letterSpacing: "-0.015em",
   color: "#14271E",
 };
 
@@ -197,7 +197,7 @@ export default function HomePage() {
         {/* ── NAV ── */}
         <nav style={{ borderBottom: `1px solid ${C.border}`, background: C.cream, position: "sticky", top: 0, zIndex: 50 }}>
           <div className={CONTENT} style={{ height: "60px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontFamily: "var(--font-manrope, sans-serif)", fontWeight: 700, fontSize: "17px", letterSpacing: "-0.02em", color: C.forest }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontFamily: "var(--font-manrope, sans-serif)", fontWeight: 700, fontSize: "17px", color: C.forest }}>
               <div style={{ width: "24px", height: "24px", background: C.forest, borderRadius: "6px", position: "relative", flexShrink: 0 }}>
                 <div style={{ position: "absolute", inset: "6px", border: `1.5px solid ${C.gold}`, borderRadius: "2px" }} />
               </div>
@@ -218,7 +218,7 @@ export default function HomePage() {
                 <span className="metes-pulse" style={{ width: "6px", height: "6px", background: C.gold, borderRadius: "50%", display: "block" }} />
                 AI-powered listing marketing
               </div>
-              <h1 style={{ fontFamily: "var(--font-manrope, sans-serif)", fontSize: "clamp(40px, 6vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.035em", marginBottom: "20px", color: C.creamWarm, fontWeight: 500 }}>
+              <h1 style={{ fontFamily: "var(--font-manrope, sans-serif)", fontSize: "clamp(40px, 6vw, 76px)", lineHeight: 1.02, marginBottom: "20px", color: C.creamWarm, fontWeight: 500 }}>
                 The marketing kit your listing{" "}
                 <em style={{ fontStyle: "normal", color: C.gold }}>deserved</em>.
               </h1>
@@ -361,7 +361,7 @@ export default function HomePage() {
               ].map(([step, title, body]) => (
                 <div key={step} style={{ border: `1px solid ${C.border}`, borderRadius: "12px", padding: "24px", background: C.creamWarm }}>
                   <div style={{ fontFamily: "var(--font-jetbrains, monospace)", fontSize: "11px", color: C.goldDeep, letterSpacing: "0.08em", marginBottom: "14px" }}>{step}</div>
-                  <div style={{ fontFamily: "var(--font-manrope, sans-serif)", fontWeight: 700, fontSize: "15px", color: C.forestDeep, marginBottom: "8px", letterSpacing: "-0.01em" }}>{title}</div>
+                  <div style={{ fontFamily: "var(--font-manrope, sans-serif)", fontWeight: 700, fontSize: "15px", color: C.forestDeep, marginBottom: "8px" }}>{title}</div>
                   <div style={{ fontSize: "13px", lineHeight: 1.6, color: C.inkSoft }}>{body}</div>
                 </div>
               ))}
@@ -450,7 +450,7 @@ export default function HomePage() {
           <div className={CONTENT}>
             <div className="grid grid-cols-2 gap-8 sm:grid-cols-[2fr_1fr_1fr_1fr]" style={{ marginBottom: "48px" }}>
               <div className="col-span-2 sm:col-span-1">
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontFamily: "var(--font-manrope, sans-serif)", fontWeight: 700, fontSize: "17px", letterSpacing: "-0.02em", color: C.creamWarm, marginBottom: "16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", fontFamily: "var(--font-manrope, sans-serif)", fontWeight: 700, fontSize: "17px", color: C.creamWarm, marginBottom: "16px" }}>
                   <div style={{ width: "24px", height: "24px", background: C.forest, borderRadius: "6px", position: "relative", flexShrink: 0 }}>
                     <div style={{ position: "absolute", inset: "6px", border: `1.5px solid ${C.gold}`, borderRadius: "2px" }} />
                   </div>
