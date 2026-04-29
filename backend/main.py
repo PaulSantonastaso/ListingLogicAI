@@ -688,12 +688,15 @@ async def _verify_turnstile(token: str) -> bool:
     secret = os.getenv("TURNSTILE_SECRET_KEY", "")
     if not secret:
         return True  # dev mode — skip verification
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            "https://challenges.cloudflare.com/turnstile/v1/siteverify",
-            data={"secret": secret, "response": token},
-        )
-        return resp.json().get("success", False)
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(
+                "https://challenges.cloudflare.com/turnstile/v1/siteverify",
+                data={"secret": secret, "response": token},
+            )
+            return resp.json().get("success", False)
+    except Exception:
+        return True  # fail open — don't block users if Turnstile is unreachable
 
 
 # ---------------------------------------------------------------------------
