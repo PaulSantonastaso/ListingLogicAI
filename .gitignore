@@ -8,7 +8,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Environment variables (CRITICAL for your API Keys)
+# Environment variables
 .env
 venv/
 env/
@@ -23,3 +23,10 @@ frontend/.next/
 frontend/node_modules/
 frontend/.env.local
 EOF
+
+# Typescript & Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+*.tsbuildinfo
+.eslintcache
