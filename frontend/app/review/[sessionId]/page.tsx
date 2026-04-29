@@ -303,7 +303,7 @@ function ReviewPageContent({ sessionId }: { sessionId: string }) {
         <div className="flex flex-1 flex-col md:grid md:grid-cols-[1fr_360px]">
 
           {/* ── Left: editable data ── */}
-          <div className="border-r border-border py-6 pr-8">
+          <div className="py-6 pr-0 md:border-r md:border-border md:pr-8">
             <div className="flex flex-col gap-5">
               <PropertyDetailsCard
                 property={property}

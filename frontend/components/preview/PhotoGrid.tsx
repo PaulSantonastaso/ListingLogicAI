@@ -37,10 +37,28 @@ export function PhotoGrid({
 
   return (
     <div className={cn("mb-3", className)}>
-      {/* Main grid — hero left, 2×2 right */}
-      <div className="flex gap-1 overflow-hidden rounded-xl h-[220px] md:h-[360px]">
+      {/* Mobile — single hero, swipeable strip below */}
+      <div className="md:hidden">
+        <div
+          className="relative overflow-hidden rounded-xl"
+          style={{ height: "260px" }}
+          onClick={() => openLightbox(sorted.findIndex(img => img.id === (activeImageId ?? hero.id)))}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={getImageUrl(sessionId, activeImageId ?? hero.id)}
+            alt="Listing photo"
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute bottom-2 left-2 rounded bg-background/80 px-2 py-0.5 text-[9px] font-semibold text-foreground backdrop-blur-sm">
+            {activeImageId === hero.id || !activeImageId ? "Hero — AI selected" : sorted.find(img => img.id === activeImageId)?.roomType?.replace(/_/g, " ")}
+          </div>
+        </div>
+      </div>
 
-        {/* Hero — 50% width, full height */}
+      {/* Desktop — hero left, 2×2 right */}
+      <div className="hidden md:flex gap-1 overflow-hidden rounded-xl h-[360px]">
+        {/* Hero */}
         <div
           className="relative w-1/2 shrink-0 cursor-pointer overflow-hidden"
           onClick={() => openLightbox(0)}
@@ -56,7 +74,7 @@ export function PhotoGrid({
           </div>
         </div>
 
-        {/* Right side — 2×2 grid, 50% width, full height */}
+        {/* 2×2 grid */}
         <div className="grid w-1/2 grid-cols-2 grid-rows-2 gap-1">
           {secondary.map((img, i) => (
             <div
@@ -72,8 +90,6 @@ export function PhotoGrid({
               />
             </div>
           ))}
-
-          {/* Fill empty slots */}
           {secondary.length < 4 &&
             Array.from({ length: 4 - secondary.length }).map((_, i) => (
               <div key={`placeholder-${i}`} className="h-full bg-muted" />

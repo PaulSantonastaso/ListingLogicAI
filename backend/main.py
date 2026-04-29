@@ -32,6 +32,7 @@ import time
 import uuid
 from typing import Any, Optional
 
+import httpx
 import redis
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -682,6 +683,19 @@ async def _run_captions_and_rename(session_id: str):
         print(f"[EXTRACT] Captions/rename failed for session {session_id}: {e}")
 
 
+async def _verify_turnstile(token: str) -> bool:
+    """Verify Cloudflare Turnstile token server-side."""
+    secret = os.getenv("TURNSTILE_SECRET_KEY", "")
+    if not secret:
+        return True  # dev mode — skip verification
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://challenges.cloudflare.com/turnstile/v1/siteverify",
+            data={"secret": secret, "response": token},
+        )
+        return resp.json().get("success", False)
+
+
 # ---------------------------------------------------------------------------
 # GET /api/session/{session_id}
 # ---------------------------------------------------------------------------
@@ -1159,6 +1173,11 @@ async def compliance_check_tool(
         raise HTTPException(status_code=422, detail="text is required.")
     if len(text) > 2000:
         raise HTTPException(status_code=400, detail="input_too_long")
+    
+    # Turnstile verification
+    turnstile_token = payload.get("cf_turnstile_response", "")
+    if not await _verify_turnstile(turnstile_token):
+        raise HTTPException(status_code=403, detail="Bot verification failed.")
 
     # IP gate
     gate = check_compliance_ip_gate(ip, email, _redis_client)
@@ -1219,6 +1238,11 @@ async def neighborhood_guide_tool(
         raise HTTPException(status_code=422, detail="address is required.")
     if len(address) > 200:
         raise HTTPException(status_code=400, detail="input_too_long")
+    
+    # Turnstile verification
+    turnstile_token = payload.get("cf_turnstile_response", "")
+    if not await _verify_turnstile(turnstile_token):
+        raise HTTPException(status_code=403, detail="Bot verification failed.")
 
     # IP gate
     gate = check_neighborhood_ip_gate(ip, email, _redis_client)
