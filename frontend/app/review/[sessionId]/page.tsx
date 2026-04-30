@@ -9,6 +9,7 @@ import { MobileStickyBar } from "@/components/shared/MobileStickyBar";
 import { DetectedFeaturesGrid } from "@/components/review/DetectedFeaturesGrid";
 import { generateListing, getSession, getImageUrl, ApiError } from "@/lib/api";
 import type { PropertyDetails, DetectedFeature, Session, ListingImage } from "@/types";
+import posthog from "posthog-js";
 
 // ─────────────────────────────────────────────────────────────────
 // Page — server params, client logic
@@ -206,10 +207,23 @@ function ReviewPageContent({ sessionId }: { sessionId: string }) {
     setGenerateError(null);
     setIsGenerating(true);
 
+    posthog.capture("listing_generation_started", {
+      session_id: sessionId,
+      feature_count: features.length,
+      image_count: session?.images.length ?? 0,
+    });
+
     try {
       await generateListing(sessionId, { property, detectedFeatures: features });
       router.push(`/preview/${sessionId}`);
     } catch (err) {
+      posthog.capture("listing_generation_error", {
+        session_id: sessionId,
+        error_message: err instanceof ApiError ? err.message : "unknown",
+      });
+      if (err instanceof Error) {
+        posthog.captureException(err);
+      }
       setGenerateError(
         err instanceof ApiError
           ? err.message

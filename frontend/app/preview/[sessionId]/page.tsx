@@ -22,6 +22,7 @@ import { useGenerationPolling } from "@/hooks/useGenerationPolling";
 import { createCheckout, getDownloadUrl, ApiError } from "@/lib/api";
 import type { PurchaseOption, Session } from "@/types";
 import { Download } from "lucide-react";
+import posthog from "posthog-js";
 
 // ─────────────────────────────────────────────────────────────────
 // Page entry — unwrap async params
@@ -60,6 +61,10 @@ function PreviewPageContent({
     onComplete: (s) => {
       const hero = s.images.find((img) => img.rank === 1);
       if (hero) setActiveImageId(hero.id);
+      posthog.capture("preview_viewed", {
+        session_id: sessionId,
+        image_count: s.images.length,
+      });
     },
   });
 
@@ -100,10 +105,17 @@ function PreviewPageContent({
 
   const handleDownload = useCallback(() => {
     if (!session?.downloadToken) return;
+    posthog.capture("listing_downloaded", {
+      session_id: sessionId,
+      paid_status: paidStatus,
+    });
     window.open(getDownloadUrl(sessionId, session.downloadToken), "_blank");
-  }, [session, sessionId]);
+  }, [session, sessionId, paidStatus]);
 
   const handlePhotoUpsell = useCallback(async () => {
+    posthog.capture("photo_upsell_clicked", {
+      session_id: sessionId,
+    });
     try {
       const origin = window.location.origin;
       const { checkoutUrl } = await createCheckout(sessionId, {
