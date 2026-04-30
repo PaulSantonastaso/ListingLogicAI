@@ -1,5 +1,6 @@
 [build]
-  builder = "nixpacks"
+  builder = "railpack"
+  rootDirectory = "/backend" 
 
 [[services]]
   name = "backend"
@@ -9,9 +10,10 @@
     buildCommand = "pip install -r requirements.txt"
 
   [services.deploy]
-    startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    startCommand = "uvicorn main:app --host 0.0.0.0 --port ${PORT}"
     healthcheckPath = "/health"
     healthcheckTimeout = 30
+    restartPolicyType = "on_failure"
 
 [[services]]
   name = "frontend"
@@ -21,4 +23,4 @@
     buildCommand = "npm install && npm run build"
 
   [services.deploy]
-    startCommand = "next start -p $PORT"
+    startCommand = "next start -p ${PORT}"
