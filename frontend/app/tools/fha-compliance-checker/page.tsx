@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import posthog from "posthog-js";
 
 type ScanStatus = "idle" | "loading" | "passed" | "flagged" | "email_gate" | "error";
 
@@ -88,6 +89,11 @@ export default function ComplianceCheckPage() {
     setResult(null);
     setErrorMsg(null);
 
+    posthog.capture("fha_scan_submitted", {
+      text_length: text.trim().length,
+      has_email: !!(overrideEmail || email),
+    });
+
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/tools/compliance-check`,
@@ -100,8 +106,10 @@ export default function ComplianceCheckPage() {
 
       if (res.status === 402) {
         const data = await res.json();
-        setRunsUsed(data.detail?.runs_used ?? 3);
+        const runs = data.detail?.runs_used ?? 3;
+        setRunsUsed(runs);
         setScanStatus("email_gate");
+        posthog.capture("fha_scan_email_gated", { runs_used: runs });
         return;
       }
 

@@ -6,18 +6,20 @@ import { cn } from "@/lib/utils";
 import { getImageUrl } from "@/lib/api";
 import { ContentSection } from "./PreviewBlocks";
 import type { GeneratedContent, ListingImage } from "@/types";
+import posthog from "posthog-js";
 
 // ─────────────────────────────────────────────────────────────────
 // CopyButton — reusable clipboard helper
 // ─────────────────────────────────────────────────────────────────
 
-function CopyButton({ text, className }: { text: string; className?: string }) {
+function CopyButton({ text, className, contentType }: { text: string; className?: string; contentType?: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    posthog.capture("content_copied", { content_type: contentType ?? "unknown" });
   };
 
   return (
@@ -67,7 +69,7 @@ export function MlsDescription({ content, isPurchased }: MlsDescriptionProps) {
         </p>
         {isPurchased && (
           <div className="mt-3 flex justify-end">
-            <CopyButton text={content.mlsDescription} />
+            <CopyButton text={content.mlsDescription} contentType="mls_description" />
           </div>
         )}
       </div>
@@ -146,6 +148,7 @@ export function SocialLaunchPack({
                   <div className="mt-2 flex justify-end">
                     <CopyButton
                       text={`${post.caption}\n\n${post.hashtags.join(" ")}`}
+                      contentType={`social_${post.platform}`}
                     />
                   </div>
                 )}
@@ -220,6 +223,7 @@ export function EmailCampaign({ content, isPurchased }: EmailCampaignProps) {
             <div className="mt-3 flex justify-end">
               <CopyButton
                 text={`Subject: ${activeEmail.subject}\n\n${activeEmail.body}`}
+                contentType={`email_${activeType}`}
               />
             </div>
           )}

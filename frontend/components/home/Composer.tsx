@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { usePhotoUpload } from "@/hooks/usePhotoUpload";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { extractListing, ApiError } from "@/lib/api";
+import posthog from "posthog-js";
 
 // ─────────────────────────────────────────────────────────────────
 // Constants
@@ -96,12 +97,21 @@ export function Composer({ className }: ComposerProps) {
     setError(null);
     setIsLoading(true);
 
+    posthog.capture("listing_submitted", {
+      photo_count: photos.length,
+      notes_length: notes.trim().length,
+    });
+
     try {
       const files = photos.map((p) => p.file);
       const result = await extractListing(files, notes);
       router.push(`/review/${result.sessionId}`);
     } catch (err) {
       if (err instanceof ApiError) {
+        posthog.capture("listing_submission_error", {
+          error_status: err.status,
+          photo_count: photos.length,
+        });
         setError(
           err.status === 422
             ? "Please add more detail — address, price, and beds/baths are helpful."
@@ -110,6 +120,10 @@ export function Composer({ className }: ComposerProps) {
             : err.message
         );
       } else {
+        posthog.capture("listing_submission_error", {
+          error_status: 0,
+          photo_count: photos.length,
+        });
         setError("Could not reach the server. Check your connection and try again.");
       }
       setIsLoading(false);

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Lock, Loader2 } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import { PRICING, type PurchaseOption } from "@/types";
+import posthog from "posthog-js";
 
 interface PurchaseCardProps {
   sessionId: string;
@@ -49,6 +50,10 @@ export function PurchaseCard({
     }
     setEmailError(null);
     setIsLoading(true);
+    posthog.capture("checkout_started", {
+      option: selected,
+      total_price: total,
+    });
     try {
       await onCheckout(selected, agentEmail);
     } finally {
@@ -66,7 +71,10 @@ export function PurchaseCard({
       {/* Option: Listing Copy */}
       <OptionCard
         selected={selected === "listing"}
-        onSelect={() => setSelected("listing")}
+        onSelect={() => {
+          setSelected("listing");
+          posthog.capture("purchase_option_selected", { option: "listing", price: PRICING.listing });
+        }}
         title="Listing Copy"
         price={formatPrice(PRICING.listing)}
         description="Full marketing copy package"
@@ -81,7 +89,10 @@ export function PurchaseCard({
       {/* Option: Listing + Photos */}
       <OptionCard
         selected={selected === "both"}
-        onSelect={() => setSelected("both")}
+        onSelect={() => {
+          setSelected("both");
+          posthog.capture("purchase_option_selected", { option: "both", price: PRICING.both });
+        }}
         title="Listing + Photo Editing"
         price={formatPrice(PRICING.both)}
         description={`Includes +${formatPrice(PRICING.photos)} photo enhancement`}
