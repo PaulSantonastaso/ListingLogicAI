@@ -52,7 +52,7 @@ async def pre_screen_compliance_input(text: str, api_key: str) -> bool:
     # Ambiguous — use Flash Lite for classification
     try:
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-lite",
+            model="gemini-2.5-flash-lite",
             temperature=0,
             max_output_tokens=1,
             google_api_key=api_key,
