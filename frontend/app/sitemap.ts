@@ -75,6 +75,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.8,
     },
     {
+      url: "https://www.metes.app/learn/neighborhood-content-that-ai-cites",
+      lastModified: new Date("2026-08-19"),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
+      url: "https://www.metes.app/learn/neighborhood-pages-agent-website",
+      lastModified: new Date("2026-08-22"),
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+    {
       url: "https://www.metes.app/compare/metes-vs-chatgpt",
       lastModified: new Date("2026-06-17"),
       changeFrequency: "monthly",
